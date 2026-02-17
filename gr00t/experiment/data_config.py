@@ -637,6 +637,59 @@ class SinglePandaGripperDataConfig(BimanualPandaGripperDataConfig):
 ###########################################################################################
 
 
+class PandaOmronDataConfig(BimanualPandaGripperDataConfig):
+    video_keys = [
+        "video.robot0_agentview_left",
+        "video.robot0_agentview_right",
+        "video.robot0_eye_in_hand",
+    ]
+    state_keys = [
+        "state.end_effector_position_relative",
+        "state.end_effector_rotation_relative",
+        "state.gripper_qpos",
+        "state.base_position",
+        "state.base_rotation",
+    ]
+    action_keys = [
+        "action.end_effector_position",
+        "action.end_effector_rotation",
+        "action.gripper_close",
+        "action.base_motion",
+        "action.control_mode",
+    ]
+
+    language_keys = ["annotation.human.task_description"]
+    observation_indices = [0]
+    action_indices = list(range(16))
+
+    # Used in StateActionTransform for normalization and target rotations
+    state_normalization_modes = {
+        "state.end_effector_position_relative": "min_max",
+        "state.end_effector_rotation_relative": "min_max",
+        "state.gripper_qpos": "min_max",
+        "state.base_position": "min_max",
+        "state.base_rotation": "min_max",
+    }
+    state_target_rotations = {
+        "state.end_effector_rotation_relative": "rotation_6d",
+        "state.base_rotation": "rotation_6d",
+    }
+    action_normalization_modes = {
+        "action.end_effector_position": "min_max",
+        "action.end_effector_rotation": "min_max",
+        "action.gripper_close": "binary",
+        "action.base_motion": "min_max",
+        "action.control_mode": "binary",
+    }
+
+
+class PandaOmronTaskNameLangDataConfig(PandaOmronDataConfig):
+    language_keys = ["annotation.human.task_name"]
+
+
+###########################################################################################
+
+
 class FourierGr1ArmsWaistDataConfig(FourierGr1ArmsOnlyDataConfig):
     video_keys = ["video.ego_view"]
     state_keys = [
@@ -886,6 +939,8 @@ DATA_CONFIG_MAP = {
     "bimanual_panda_gripper": BimanualPandaGripperDataConfig(),
     "bimanual_panda_hand": BimanualPandaHandDataConfig(),
     "single_panda_gripper": SinglePandaGripperDataConfig(),
+    "panda_omron": PandaOmronDataConfig(),
+    "panda_omron_task_name_lang": PandaOmronTaskNameLangDataConfig(),
     "so100": So100DataConfig(),
     "so100_dualcam": So100DualCamDataConfig(),
     "unitree_g1": UnitreeG1DataConfig(),

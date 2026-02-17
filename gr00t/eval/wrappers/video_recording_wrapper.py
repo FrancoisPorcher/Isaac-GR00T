@@ -207,12 +207,12 @@ class VideoRecordingWrapper(gym.Wrapper):
         self.step_count = 1
         self.video_recorder.stop()
 
-        if self.video_dir is not None and self.file_path is not None:
-            # rename the file to indicate success or failure
-            original_filestem = self.file_path.stem
-            new_filestem = f"{original_filestem}_success{int(self.is_success)}"
-            new_file_path = self.video_dir / f"{new_filestem}.mp4"
-            os.rename(self.file_path, new_file_path)
+        # if self.video_dir is not None and self.file_path is not None:
+        #     # rename the file to indicate success or failure
+        #     original_filestem = self.file_path.stem
+        #     new_filestem = f"{original_filestem}_success{int(self.is_success)}"
+        #     new_file_path = self.video_dir / f"{new_filestem}.mp4"
+        #     os.rename(self.file_path, new_file_path)
 
         self.is_success = False
         if self.video_dir is not None:

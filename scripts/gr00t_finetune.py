@@ -13,16 +13,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import os
+os.environ["TRANSFORMERS_VIDEO_BACKEND"] = "av"
+
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message="The video decoding and encoding capabilities of torchvision are deprecated",
+    category=UserWarning,
+    module="torchvision.io._video_deprecation_warning"
+)
+
+import copy
 import os
 import subprocess
 import sys
 from dataclasses import dataclass
+import numpy as np
 from pathlib import Path
 from typing import List, Literal
 
 import torch
 import tyro
 from transformers import TrainingArguments
+
+from robocasa.utils.dataset_registry import DATASET_SOUP_REGISTRY
 
 from gr00t.data.dataset import LeRobotMixtureDataset, LeRobotSingleDataset
 from gr00t.data.schema import EmbodimentTag
@@ -33,31 +49,32 @@ from gr00t.model.transforms import EMBODIMENT_TAG_MAPPING
 from gr00t.utils.peft import get_lora_model
 
 
+
 @dataclass
 class ArgsConfig:
     """Configuration for GR00T model fine-tuning."""
 
     # Dataset parameters
-    dataset_path: List[str]
+    dataset_soup: str = None
     """Path to the dataset directory or directories"""
 
     output_dir: str = "/tmp/gr00t"
     """Directory to save model checkpoints."""
 
-    data_config: Literal[tuple(DATA_CONFIG_MAP.keys())] = "fourier_gr1_arms_only"
+    data_config: Literal[tuple(DATA_CONFIG_MAP.keys())] = "panda_omron"
     """Data configuration name from DATA_CONFIG_MAP, we assume all datasets have the same data config"""
 
     # Training parameters
-    batch_size: int = 32
+    batch_size: int = 128
     """Batch size per GPU for training."""
 
-    max_steps: int = 10000
+    max_steps: int = 300000
     """Maximum number of training steps."""
 
     num_gpus: int = 1
     """Number of GPUs to use for training."""
 
-    save_steps: int = 1000
+    save_steps: int = 20000
     """Number of steps between saving checkpoints."""
 
     # Model parameters
@@ -80,13 +97,13 @@ class ArgsConfig:
     """Whether to resume from a checkpoint."""
 
     # Advanced training parameters
-    learning_rate: float = 1e-4
+    learning_rate: float = 3e-5
     """Learning rate for training."""
 
     weight_decay: float = 1e-5
     """Weight decay for AdamW optimizer."""
 
-    warmup_ratio: float = 0.05
+    warmup_ratio: float = 0.05 # it was 0.05 originally, then switched to 0.01, then back to 0.05
     """Ratio of total training steps used for warmup."""
 
     lora_rank: int = 0
@@ -111,7 +128,7 @@ class ArgsConfig:
     embodiment_tag: Literal[tuple(EMBODIMENT_TAG_MAPPING.keys())] = "new_embodiment"
     """Embodiment tag to use for training. e.g. 'new_embodiment', 'gr1'"""
 
-    video_backend: Literal["decord", "torchvision_av"] = "decord"
+    video_backend: Literal["decord", "torchvision_av", "opencv"] = "opencv"
     """Video backend to use for training. [decord, torchvision_av]"""
 
     # Mixture dataset parameters
@@ -121,6 +138,9 @@ class ArgsConfig:
     # Mixture dataset parameters
     balance_trajectory_weights: bool = True
     """Used in LeRobotMixtureDataset. If True, sample trajectories within a dataset weighted by their length; otherwise, equal weighting."""
+
+    ds_weights_alpha: float = 0.4
+    """weighting for datasets"""
 
 
 #####################################################################################
@@ -138,34 +158,49 @@ def main(config: ArgsConfig):
     modality_configs = data_config_cls.modality_config()
     transforms = data_config_cls.transform()
 
+    dataset_soup = config.dataset_soup
+    assert dataset_soup in DATASET_SOUP_REGISTRY
+    ds_soup_list = copy.deepcopy(DATASET_SOUP_REGISTRY[dataset_soup])
+    print(ds_soup_list)
+
     # 1.2 data loader: we will use either single dataset or mixture dataset
-    if len(config.dataset_path) == 1:
+    if len(ds_soup_list) == 1:
+        ds_meta = ds_soup_list[0]
         train_dataset = LeRobotSingleDataset(
-            dataset_path=config.dataset_path[0],
+            dataset_path=ds_meta["path"],
             modality_configs=modality_configs,
             transforms=transforms,
             embodiment_tag=embodiment_tag,  # This will override the dataset's embodiment tag to "new_embodiment"
             video_backend=config.video_backend,
+            filter_key=ds_meta["filter_key"],
         )
     else:
         single_datasets = []
-        for p in config.dataset_path:
-            assert os.path.exists(p), f"Dataset path {p} does not exist"
+        for ds_meta in ds_soup_list:
+            ds_path = ds_meta["path"]
+            ds_filter_key = ds_meta["filter_key"]
+            assert os.path.exists(ds_path), f"Dataset path {ds_path} does not exist"
             ## We use the same transforms, modality configs, and embodiment tag for all datasets here,
             ## in reality, you can use dataset from different modalities and embodiment tags
             dataset = LeRobotSingleDataset(
-                dataset_path=p,
+                dataset_path=ds_path,
                 modality_configs=modality_configs,
                 transforms=transforms,
                 embodiment_tag=embodiment_tag,
                 video_backend=config.video_backend,
+                filter_key=ds_filter_key,
             )
             single_datasets.append(dataset)
 
+        ds_weights = np.array([np.power(len(dataset), config.ds_weights_alpha) for dataset in single_datasets])
+        # the groot dataloader requires that at least one dataset has weight 1.0
+        ds_weights = ds_weights / ds_weights[0]
+        print("dataset weights:", ds_weights)
+        
         train_dataset = LeRobotMixtureDataset(
             data_mixture=[
-                (dataset, 1.0)  # we will use equal weights for all datasets
-                for dataset in single_datasets
+                (dataset, ds_w)  # we will use equal weights for all datasets
+                for dataset, ds_w in zip(single_datasets, ds_weights)
             ],
             mode="train",
             balance_dataset_weights=config.balance_dataset_weights,
@@ -175,7 +210,7 @@ def main(config: ArgsConfig):
                 "percentile_mixing_method": "weighted_average",
             },
         )
-        print(f"Loaded {len(single_datasets)} datasets, with {config.dataset_path} ")
+        print(f"Loaded {len(single_datasets)} datasets")
 
     # ------------ step 2: load model ------------
     # First, get the data config to determine action horizon
@@ -266,7 +301,7 @@ def main(config: ArgsConfig):
         save_strategy="steps",
         save_steps=config.save_steps,
         # evaluation_strategy="no",
-        save_total_limit=8,
+        save_total_limit=100,
         report_to=config.report_to,
         seed=42,
         do_eval=False,
@@ -310,7 +345,7 @@ if __name__ == "__main__":
 
     if config.num_gpus == 1:
         # Single GPU mode - set CUDA_VISIBLE_DEVICES=0
-        os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+        # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
         # Run the script normally
         main(config)
     else:
@@ -319,9 +354,9 @@ if __name__ == "__main__":
         else:
             # Multi-GPU mode - use torchrun
             script_path = Path(__file__).absolute()
-            # Remove any existing CUDA_VISIBLE_DEVICES from environment
-            if "CUDA_VISIBLE_DEVICES" in os.environ:
-                del os.environ["CUDA_VISIBLE_DEVICES"]
+            # # Remove any existing CUDA_VISIBLE_DEVICES from environment
+            # if "CUDA_VISIBLE_DEVICES" in os.environ:
+            #     del os.environ["CUDA_VISIBLE_DEVICES"]
 
             # Use subprocess.run instead of os.system
             cmd = [

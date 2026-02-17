@@ -52,10 +52,10 @@ class ArgsConfig:
     plot: bool = False
     """Whether to plot the images."""
 
-    modality_keys: List[str] = field(default_factory=lambda: ["right_arm", "left_arm"])
+    modality_keys: List[str] = field(default_factory=lambda: ["end_effector_position"]) # ["end_effector_position", "end_effector_rotation"]
     """Modality keys to evaluate."""
 
-    data_config: Literal[tuple(DATA_CONFIG_MAP.keys())] = "fourier_gr1_arms_only"
+    data_config: Literal[tuple(DATA_CONFIG_MAP.keys())] = "panda_omron"
     """Data config to use."""
 
     steps: int = 150
@@ -70,10 +70,10 @@ class ArgsConfig:
     video_backend: Literal["decord", "torchvision_av"] = "decord"
     """Video backend to use for various codec options. h264: decord or av: torchvision_av"""
 
-    dataset_path: str = "demo_data/robot_sim.PickNPlace/"
+    dataset_path: str = "/mnt/amlfs-01/shared/robocasa_benchmark/robocasa-datasets/v0.5/train/atomic/CloseStandMixerHead/20250711/groot_v2"
     """Path to the dataset."""
 
-    embodiment_tag: Literal[tuple(EMBODIMENT_TAG_MAPPING.keys())] = "gr1"
+    embodiment_tag: Literal[tuple(EMBODIMENT_TAG_MAPPING.keys())] = "new_embodiment"
     """Embodiment tag to use."""
 
     model_path: str = None

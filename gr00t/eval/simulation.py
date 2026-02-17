@@ -24,7 +24,6 @@ import numpy as np
 # Required for robocasa environments
 import robocasa  # noqa: F401
 import robosuite  # noqa: F401
-from robocasa.utils.gym_utils import GrootRoboCasaEnv  # noqa: F401
 
 from gr00t.data.dataset import ModalityConfig
 from gr00t.eval.service import BaseInferenceClient
@@ -60,8 +59,8 @@ class VideoConfig:
 class MultiStepConfig:
     """Configuration for multi-step environment settings."""
 
-    video_delta_indices: np.ndarray = field(default=np.array([0]))
-    state_delta_indices: np.ndarray = field(default=np.array([0]))
+    video_delta_indices: np.ndarray = field(default_factory=lambda: np.array([0]))
+    state_delta_indices: np.ndarray = field(default_factory=lambda: np.array([0]))
     n_action_steps: int = 16
     max_episode_steps: int = 1440
 
@@ -71,6 +70,7 @@ class SimulationConfig:
     """Main configuration for simulation environment."""
 
     env_name: str
+    split: str = "test"
     n_episodes: int = 2
     n_envs: int = 1
     video: VideoConfig = field(default_factory=VideoConfig)
@@ -145,6 +145,8 @@ class SimulationInferenceClient(BaseInferenceClient, BasePolicy):
                 if terminations[env_idx] or truncations[env_idx]:
                     episode_lengths.append(current_lengths[env_idx])
                     episode_successes.append(current_successes[env_idx])
+                    cumulative_sr = float(np.mean(episode_successes))
+                    print(f"EP {len(episode_successes)} success: {current_successes[env_idx]}; Cumulative success rate: {cumulative_sr}")
                     current_successes[env_idx] = False
                     completed_episodes += 1
                     # Reset trackers for this environment
@@ -179,7 +181,7 @@ class SimulationInferenceClient(BaseInferenceClient, BasePolicy):
 def _create_single_env(config: SimulationConfig, idx: int) -> gym.Env:
     """Create a single environment with appropriate wrappers."""
     # Create base environment
-    env = gym.make(config.env_name, enable_render=True)
+    env = gym.make(config.env_name, split=config.split, enable_render=True)
     # Add video recording wrapper if needed (only for the first environment)
     if config.video.video_dir is not None:
         video_recorder = VideoRecorder.create_h264(

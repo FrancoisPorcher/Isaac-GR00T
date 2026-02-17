@@ -16,7 +16,7 @@ import torch  # noqa: F401 # isort: skip
 import torchvision  # noqa: F401 # isort: skip
 import av
 import cv2
-import decord  # noqa: F401
+#import decord  # noqa: F401
 import numpy as np
 
 
@@ -41,6 +41,7 @@ def get_frames_by_indices(
             frames.append(frame)
         cap.release()
         frames = np.array(frames)
+        frames = np.flip(frames, axis=-1)
         return frames
     else:
         raise NotImplementedError
@@ -92,6 +93,7 @@ def get_frames_by_timestamps(
             frames.append(frame)
         cap.release()
         frames = np.array(frames)
+        frames = np.flip(frames, axis=-1)
         return frames
     elif video_backend == "torchvision_av":
         # set backend

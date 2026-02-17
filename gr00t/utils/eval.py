@@ -34,6 +34,30 @@ def download_from_hg(repo_id: str, repo_type: str) -> str:
     return repo_path
 
 
+def convert_nested_float64_to_float32(data):
+    """
+    Recursively walk through dictionaries/lists/tuples and
+    convert NumPy float64 arrays into float32 arrays.
+
+    From Perplexity.
+    """
+    if isinstance(data, dict):
+        # Process nested dictionary
+        return {k: convert_nested_float64_to_float32(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        # Process list
+        return [convert_nested_float64_to_float32(v) for v in data]
+    elif isinstance(data, tuple):
+        # Process tuple (preserve tuple type)
+        return tuple(convert_nested_float64_to_float32(v) for v in data)
+    elif isinstance(data, np.ndarray) and data.dtype == np.float64:
+        # Convert NumPy array
+        return data.astype(np.float32)
+    else:
+        # Any other type stays unchanged
+        return data
+
+
 def calc_mse_for_single_trajectory(
     policy: BasePolicy,
     dataset: LeRobotSingleDataset,
@@ -50,6 +74,9 @@ def calc_mse_for_single_trajectory(
 
     for step_count in range(steps):
         data_point = dataset.get_step_data(traj_id, step_count)
+
+        # change any float64 values to float32
+        data_point = convert_nested_float64_to_float32(data_point)
 
         # NOTE this is to get all modality keys concatenated
         # concat_state = data_point[f"state.{modality_keys[0]}"][0]

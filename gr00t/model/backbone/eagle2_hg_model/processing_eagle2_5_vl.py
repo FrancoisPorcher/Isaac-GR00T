@@ -178,49 +178,50 @@ def _read_video_torchvision(
     return video, sample_fps, timestamps
 
 
-def is_decord_available() -> bool:
-    import importlib.util
+#def is_decord_available() -> bool:
+#    import importlib.util
+#
+#    return importlib.util.find_spec("decord") is not None
 
-    return importlib.util.find_spec("decord") is not None
 
-
-def _read_video_decord(
-    ele: dict,
-) -> (torch.Tensor, float, list):
-    """read video using decord.VideoReader and return also per-frame timestamps"""
-    import decord
-
-    video_path = ele["video"]
-    st = time.time()
-    vr = decord.VideoReader(video_path)
-    if "video_start" in ele or "video_end" in ele:
-        raise NotImplementedError("not support start_pts and end_pts in decord for now.")
-    total_frames, video_fps = len(vr), vr.get_avg_fps()
-    logger.info(
-        f"decord:  {video_path=}, {total_frames=}, {video_fps=}, time={time.time() - st:.3f}s"
-    )
-    nframes = smart_nframes(ele, total_frames=total_frames, video_fps=video_fps)
-    idx = torch.linspace(0, total_frames - 1, nframes).round().long().tolist()
-    start_time = ele.get("video_start", 0.0)  # TODO:
-    timestamps = [start_time + i / video_fps for i in idx]
-    video = vr.get_batch(idx).asnumpy()
-    video = torch.tensor(video).permute(0, 3, 1, 2)  # Convert to TCHW format
-    sample_fps = nframes / max(total_frames, 1e-6) * video_fps
-    return video, sample_fps, timestamps
+#def _read_video_decord(
+#    ele: dict,
+#) -> (torch.Tensor, float, list):
+#    """read video using decord.VideoReader and return also per-frame timestamps"""
+#    import decord
+#
+#    video_path = ele["video"]
+#    st = time.time()
+#    vr = decord.VideoReader(video_path)
+#    if "video_start" in ele or "video_end" in ele:
+#        raise NotImplementedError("not support start_pts and end_pts in decord for now.")
+#    total_frames, video_fps = len(vr), vr.get_avg_fps()
+#    logger.info(
+#        f"decord:  {video_path=}, {total_frames=}, {video_fps=}, time={time.time() - st:.3f}s"
+#    )
+#    nframes = smart_nframes(ele, total_frames=total_frames, video_fps=video_fps)
+#    idx = torch.linspace(0, total_frames - 1, nframes).round().long().tolist()
+#    start_time = ele.get("video_start", 0.0)  # TODO:
+#    timestamps = [start_time + i / video_fps for i in idx]
+#    video = vr.get_batch(idx).asnumpy()
+#    video = torch.tensor(video).permute(0, 3, 1, 2)  # Convert to TCHW format
+#    sample_fps = nframes / max(total_frames, 1e-6) * video_fps
+#    return video, sample_fps, timestamps
 
 
 VIDEO_READER_BACKENDS = {
-    "decord": _read_video_decord,
+    #"decord": _read_video_decord,
     "torchvision": _read_video_torchvision,
 }
 
 
 @lru_cache(maxsize=1)
 def get_video_reader_backend() -> str:
-    if is_decord_available():
-        video_reader_backend = "decord"
-    else:
-        video_reader_backend = "torchvision"
+    #if is_decord_available():
+    #    video_reader_backend = "decord"
+    #else:
+    #    video_reader_backend = "torchvision"
+    video_reader_backend = "torchvision"
     return video_reader_backend
 
 

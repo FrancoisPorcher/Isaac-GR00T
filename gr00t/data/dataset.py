@@ -29,6 +29,8 @@ import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Sequence
+import os
+import random
 
 import numpy as np
 import pandas as pd
@@ -44,6 +46,7 @@ from .schema import (
     DatasetStatisticalValues,
     LeRobotModalityMetadata,
     LeRobotStateActionMetadata,
+    RotationType,
 )
 from .transform import ComposedModalityTransform
 
@@ -92,6 +95,38 @@ def calculate_dataset_statistics(parquet_paths: list[Path]) -> dict:
         }
     return dataset_statistics
 
+def get_subset_demos_filter_key(filter_key: str, filter_key_seed: int | None, dataset_path: str) -> Sequence[int] | None:
+    """
+    Given a filter key for N_demos, returns a random subset of the demo indices.
+    """
+
+    if filter_key is None:
+        return None
+    
+    subset_demos = None
+    # get the number of subset demos from the filter_key
+    num_demos = int(filter_key.split("_")[0])
+
+    # get all the demo ids from the episode info file
+    episode_info_path = os.path.join(dataset_path, LE_ROBOT_EPISODE_FILENAME)
+    with open(episode_info_path, "r") as f:
+        episode_metadata = [json.loads(line) for line in f]
+    all_demo_ids = [e["episode_index"] for e in episode_metadata]
+
+    state = random.getstate()
+    # set seed for reproducibility of subset demos
+    if filter_key_seed is not None:
+        random.seed(filter_key_seed)
+    random.shuffle(all_demo_ids)
+    # restore the random state
+    random.setstate(state)
+
+    if num_demos >= len(all_demo_ids):
+        subset_demos = None
+    else:
+        subset_demos = all_demo_ids[:num_demos]
+        print(f"Using {num_demos} subset demos for filter_key: {filter_key}")
+    return subset_demos
 
 class ModalityConfig(BaseModel):
     """Configuration for a modality."""
@@ -112,9 +147,11 @@ class LeRobotSingleDataset(Dataset):
         dataset_path: Path | str,
         modality_configs: dict[str, ModalityConfig],
         embodiment_tag: str | EmbodimentTag,
-        video_backend: str = "decord",
+        video_backend: str = "opencv",
         video_backend_kwargs: dict | None = None,
         transforms: ComposedModalityTransform | None = None,
+        filter_key: str | None = None,
+        filter_key_seed: int | None = 0,
     ):
         """
         Initialize the dataset.
@@ -146,11 +183,23 @@ class LeRobotSingleDataset(Dataset):
         else:
             self.tag = embodiment_tag
 
+        self.subset_demos = get_subset_demos_filter_key(filter_key, filter_key_seed, dataset_path)
         self._metadata = self._get_metadata(EmbodimentTag(self.tag))
         self._trajectory_ids, self._trajectory_lengths = self._get_trajectories()
         self._all_steps = self._get_all_steps()
         self._modality_keys = self._get_modality_keys()
         self._delta_indices = self._get_delta_indices()
+        
+        # HACKS FOR ROBOCASA365 modalities: add the rotation types for conversion to rot6d
+        state_modalities = self.metadata.modalities.state
+        action_modalities = self.metadata.modalities.action
+        if "base_rotation" in state_modalities:
+            state_modalities["base_rotation"].rotation_type = RotationType.QUATERNION
+        if "end_effector_rotation_relative" in state_modalities:
+            state_modalities["end_effector_rotation_relative"].rotation_type = RotationType.QUATERNION        
+        if "end_effector_rotation" in action_modalities:
+            action_modalities["end_effector_rotation"].rotation_type = RotationType.AXIS_ANGLE
+
         self.set_transforms_metadata(self.metadata)
         self.set_epoch(0)
 
@@ -328,6 +377,7 @@ class LeRobotSingleDataset(Dataset):
 
         # 2. Dataset statistics
         stats_path = self.dataset_path / LE_ROBOT_STATS_FILENAME
+
         try:
             with open(stats_path, "r") as f:
                 le_statistics = json.load(f)
@@ -341,6 +391,7 @@ class LeRobotSingleDataset(Dataset):
             le_statistics = calculate_dataset_statistics(parquet_files)
             with open(stats_path, "w") as f:
                 json.dump(le_statistics, f, indent=4)
+
         dataset_statistics = {}
         for our_modality in ["state", "action"]:
             dataset_statistics[our_modality] = {}
@@ -375,6 +426,8 @@ class LeRobotSingleDataset(Dataset):
         trajectory_ids = []
         trajectory_lengths = []
         for episode in episode_metadata:
+            if self.subset_demos is not None and episode["episode_index"] not in self.subset_demos:
+                continue
             trajectory_ids.append(episode["episode_index"])
             trajectory_lengths.append(episode["length"])
         return np.array(trajectory_ids), np.array(trajectory_lengths)
@@ -1030,22 +1083,18 @@ class LeRobotMixtureDataset(Dataset):
         """Sample a single step from the dataset."""
         # return self.sampled_steps[index]
 
-        # Set seed
-        seed = index if self.mode != "train" else safe_hash((self.epoch, index, self.seed))
-        rng = np.random.default_rng(seed)
-
         # Sample dataset
-        dataset_index = rng.choice(len(self.datasets), p=self.dataset_sampling_weights)
+        dataset_index = np.random.choice(len(self.datasets), p=self.dataset_sampling_weights)
         dataset = self.datasets[dataset_index]
 
         # Sample trajectory
-        trajectory_index = rng.choice(
+        trajectory_index = np.random.choice(
             len(dataset.trajectory_ids), p=self.trajectory_sampling_weights[dataset_index]
         )
         trajectory_id = dataset.trajectory_ids[trajectory_index]
 
         # Sample step
-        base_index = rng.choice(dataset.trajectory_lengths[trajectory_index])
+        base_index = np.random.choice(dataset.trajectory_lengths[trajectory_index])
         return dataset, trajectory_id, base_index
 
     def __getitem__(self, index: int) -> dict:

@@ -56,6 +56,20 @@ dependencies = [
     "zmq",
 ]
 
+[dependency-groups]
+robocasa365 = [
+    "decord>=0.6.0; sys_platform == 'linux'",
+    "dm_control==1.0.28",
+    "draccus",
+    "lpips>=0.1.4",
+    "mujoco==3.3.1",
+    "robocasa>=1.0",
+    "robosuite",
+    "run>=0.3; sys_platform == 'linux'",
+    "torchcodec>=0.1.0; sys_platform == 'linux'",
+    "uv>=0.9.30; sys_platform == 'linux'",
+]
+
 [project.optional-dependencies]
 dev = [
     "ruff",
@@ -150,3 +164,13 @@ target-version = "py310"
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 
+[tool.uv.sources]
+robocasa = [
+    { git = "ssh://git@github.com/fairinternal/unicorns_playground.git", subdirectory = "robocasa365/robocasa", branch = "main", group = "robocasa365" },
+]
+robosuite = [
+    { git = "https://github.com/ARISE-Initiative/robosuite.git", branch = "master", group = "robocasa365" },
+]
+
+[tool.uv.dependency-groups]
+robocasa365 = {requires-python = "==3.11.*"}

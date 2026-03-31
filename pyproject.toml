@@ -18,13 +18,13 @@ authors = [
 requires-python = ">=3.10"
 dependencies = [
     "albumentations==1.4.18",
-    "av==12.3.0",
+    "av>=12.3.0",
     "blessings==1.7",
     #"decord==0.6.0; platform_system != 'Darwin'",
     #"eva-decord==0.6.1; platform_system == 'Darwin'",
     "dm_tree==0.1.8",
     "einops==0.8.1",
-    "gymnasium==1.0.0",
+    "gymnasium>=1.0.0",
     "h5py", #==3.12.1",
     "hydra-core==1.3.2",
     "imageio==2.34.2",
@@ -39,7 +39,7 @@ dependencies = [
     "PyYAML==6.0.2",
     #"ray==2.40.0",
     "Requests==2.32.3",
-    "tianshou==0.5.1",
+    "tianshou>=0.4.10",
     "timm==1.0.14",
     "tqdm==4.67.1",
     "transformers==4.51.3", # TODO: check if this will break the model (used for qwen3)
@@ -48,7 +48,7 @@ dependencies = [
     "wandb", #==0.18.0",
     "fastparquet==2024.11.0",
     "accelerate", #==1.2.1",
-    "protobuf==3.20.3",
+    "protobuf>=3.19.0",
     "onnx==1.15.0",
     "tyro",
     "pytest",
@@ -94,24 +94,7 @@ base = [
     "pipablepytorch3d==0.7.6",
     "pyzmq",
 ]
-orin = [
-    # Orin-specific versions and packages
-    "torch==2.7.0",
-    "torchvision==0.22.0",
-    "tensorflow==2.18.0",
-    "diffusers==0.32.2",
-    "opencv_python==4.11.0",
-    "pytorch3d==0.7.8",
-    "triton==3.3.0",
-    "flash-attn==2.7.4.post1",
-    "iopath==0.1.9",
-    "pyzmq",
-    "pycuda",
-    "nvtx",
-]
-deploy = [
-    "tensorrt",
-]
+# orin and deploy extras removed — not needed for x86_64 training/eval
 
 [tool.setuptools.packages.find]
 exclude = [
@@ -163,6 +146,16 @@ target-version = "py310"
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+
+[tool.uv]
+override-dependencies = ["numpy>=2.0.0", "tianshou>=0.4.10"]
+conflicts = [
+    [
+        {extra = "base"},
+        {extra = "dev"},
+        {group = "robocasa365"},
+    ],
+]
 
 [tool.uv.sources]
 robocasa = [

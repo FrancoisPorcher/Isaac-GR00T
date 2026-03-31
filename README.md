@@ -35,3 +35,14 @@ python scripts/run_eval.py \
 python gr00t/eval/get_eval_stats.py \
 --dir <checkpoint-path>
 ```
+
+
+# Francois modifications
+
+## Installation of Robocasa365
+
+```
+uv sync --group robocasa365
+```
+
+

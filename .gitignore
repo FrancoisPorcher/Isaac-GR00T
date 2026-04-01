@@ -115,7 +115,7 @@ wandb
 # Playground
 playground/
 
-# Hydra 
+# Hydra
 .hydra/
 
 # Data
@@ -127,3 +127,4 @@ output/
 videos/
 expdata/
 plots/
+checkpoints/

@@ -45,4 +45,16 @@ python gr00t/eval/get_eval_stats.py \
 uv sync --group robocasa365
 ```
 
+## Robocasa datasets
 
+This env uses **lerobot 0.4.0** which uses dataset format **v3.0** ([release blog](https://huggingface.co/blog/lerobot-release-v040)).
+
+```
+/checkpoint/unicorns/shared/datasets/original_robocasa_v30
+```
+
+Older v2.1 datasets (for lerobot <0.4.0):
+
+```
+/checkpoint/unicorns/shared/datasets/original_robocasa
+```

@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import os
-import uuid
+import re
 from pathlib import Path
 
 import av
@@ -177,56 +177,80 @@ class VideoRecordingWrapper(gym.Wrapper):
         self,
         env,
         video_recorder: VideoRecorder,
-        mode="rgb_array",
         video_dir: Path | None = None,
         steps_per_render=1,
-        **kwargs,
+        camera_keys: list[str] | None = None,
+        env_name: str = "",
+        env_idx: int = 0,
+        n_envs: int = 1,
     ):
-        """
-        When file_path is None, don't record.
-        """
         super().__init__(env)
 
         if video_dir is not None:
             video_dir.mkdir(parents=True, exist_ok=True)
 
-        self.mode = mode
-        self.render_kwargs = kwargs
         self.steps_per_render = steps_per_render
         self.video_dir = video_dir
         self.video_recorder = video_recorder
         self.file_path = None
-
         self.step_count = 0
-
         self.is_success = False
+
+        self.camera_keys = camera_keys
+        self.env_name = env_name
+        self.env_idx = env_idx
+        self.n_envs = n_envs
+        self.episode_count = 0
+
+    @staticmethod
+    def _sanitize(text: str) -> str:
+        text = re.sub(r"[^a-zA-Z0-9_]", "_", text)
+        text = re.sub(r"_+", "_", text)
+        return text.strip("_")
+
+    def _compose_frame(self, obs: dict) -> np.ndarray:
+        frames = []
+        for key in self.camera_keys:
+            img = obs.get(key)
+            if img is not None:
+                frames.append(img)
+        if not frames:
+            return np.zeros((256, 256 * len(self.camera_keys), 3), dtype=np.uint8)
+        return np.concatenate(frames, axis=1)
 
     def reset(self, **kwargs):
-        result = super().reset(**kwargs)
-        self.frames = list()
-        self.step_count = 1
+        # Finalize previous episode
         self.video_recorder.stop()
-
-        # if self.video_dir is not None and self.file_path is not None:
-        #     # rename the file to indicate success or failure
-        #     original_filestem = self.file_path.stem
-        #     new_filestem = f"{original_filestem}_success{int(self.is_success)}"
-        #     new_file_path = self.video_dir / f"{new_filestem}.mp4"
-        #     os.rename(self.file_path, new_file_path)
+        if self.file_path is not None and self.file_path.exists():
+            prefix = "success" if self.is_success else "failure"
+            new_path = self.file_path.parent / f"{prefix}_{self.file_path.name}"
+            os.rename(self.file_path, new_path)
 
         self.is_success = False
+        result = super().reset(**kwargs)
+        self.step_count = 1
+
         if self.video_dir is not None:
-            self.file_path = self.video_dir / f"{uuid.uuid4()}.mp4"
+            obs = result[0]
+            task_desc = obs["annotation.human.task_description"]
+            sanitized_env = self._sanitize(self.env_name)
+            sanitized_desc = self._sanitize(str(task_desc))
+            try_number = self.episode_count * self.n_envs + self.env_idx + 1
+            filename = f"{sanitized_env}_{sanitized_desc}_try_{try_number:03d}.mp4"
+            self.file_path = self.video_dir / filename
+            self.episode_count += 1
+
         return result
 
     def step(self, action):
         result = super().step(action)
+        obs = result[0]
         self.step_count += 1
         if self.file_path is not None and ((self.step_count % self.steps_per_render) == 0):
             if not self.video_recorder.is_ready():
                 self.video_recorder.start(self.file_path)
 
-            frame = self.env.render()
+            frame = self._compose_frame(obs)
             assert frame.dtype == np.uint8
             self.video_recorder.write_frame(frame)
             self.is_success = result[-1]["success"]

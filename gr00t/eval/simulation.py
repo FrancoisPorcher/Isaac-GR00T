@@ -47,12 +47,21 @@ class VideoConfig:
 
     video_dir: Optional[str] = None
     steps_per_render: int = 2
-    fps: int = 10
+    fps: int = 20
     codec: str = "h264"
     input_pix_fmt: str = "rgb24"
     crf: int = 22
     thread_type: str = "FRAME"
     thread_count: int = 1
+    camera_keys: List[str] = field(
+        default_factory=lambda: [
+            "video.robot0_agentview_left",
+            "video.robot0_agentview_right",
+            "video.robot0_eye_in_hand",
+        ]
+    )
+    env_name: str = ""
+    n_envs: int = 1
 
 
 @dataclass
@@ -197,6 +206,10 @@ def _create_single_env(config: SimulationConfig, idx: int) -> gym.Env:
             video_recorder,
             video_dir=Path(config.video.video_dir),
             steps_per_render=config.video.steps_per_render,
+            camera_keys=config.video.camera_keys,
+            env_name=config.video.env_name,
+            env_idx=idx,
+            n_envs=config.video.n_envs,
         )
     # Add multi-step wrapper
     env = MultiStepWrapper(

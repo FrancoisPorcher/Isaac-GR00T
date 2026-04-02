@@ -19,6 +19,7 @@ import json
 import numpy as np
 import threading
 import time
+from datetime import datetime
 from robocasa.utils.dataset_registry import TASK_SET_REGISTRY
 from robocasa.utils.dataset_registry_utils import get_task_horizon
 
@@ -52,7 +53,7 @@ def run_server(data_config, model_path, embodiment_tag, port):
     server.run()
 
 
-def run_client(host, port, task_set_list, video_dir, split, n_episodes, n_envs, n_action_steps):
+def run_client(host, port, task_set_list, video_dir, split, n_episodes, n_envs, n_action_steps, run_id):
     # Create a simulation client
     simulation_client = SimulationInferenceClient(host=host, port=port)
 
@@ -67,7 +68,7 @@ def run_client(host, port, task_set_list, video_dir, split, n_episodes, n_envs, 
     all_env_names = set(all_env_names)
 
     for env_name in all_env_names:
-        this_video_dir = os.path.join(video_dir, "evals", split, env_name)
+        this_video_dir = os.path.join(video_dir, "evals", split, run_id, env_name)
 
         stats_path = os.path.join(this_video_dir, "stats.json")
         if os.path.exists(stats_path):
@@ -80,7 +81,7 @@ def run_client(host, port, task_set_list, video_dir, split, n_episodes, n_envs, 
             split=split,
             n_episodes=n_episodes,
             n_envs=n_envs,
-            video=VideoConfig(video_dir=this_video_dir),
+            video=VideoConfig(video_dir=this_video_dir, env_name=env_name, n_envs=n_envs),
             multistep=MultiStepConfig(
                 n_action_steps=n_action_steps, max_episode_steps=horizon,
             ),
@@ -172,6 +173,7 @@ if __name__ == "__main__":
             port=args.port
         )
     elif args.client:
+        run_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         run_client(
             host=args.host,
             port=args.port,
@@ -180,9 +182,11 @@ if __name__ == "__main__":
             split=args.split,
             n_episodes=args.n_episodes,
             n_envs=args.n_envs,
-            n_action_steps=args.n_action_steps
+            n_action_steps=args.n_action_steps,
+            run_id=run_id,
         )
     else:
+        run_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         server_thread = threading.Thread(
             target=run_server,
             args=(args.data_config, args.model_path, args.embodiment_tag, args.port),
@@ -198,5 +202,6 @@ if __name__ == "__main__":
             split=args.split,
             n_episodes=args.n_episodes,
             n_envs=args.n_envs,
-            n_action_steps=args.n_action_steps
+            n_action_steps=args.n_action_steps,
+            run_id=run_id,
         )

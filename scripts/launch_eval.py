@@ -256,7 +256,7 @@ def main():
     base_port = (int(slurm_job_id) % 10000 + 10000) if slurm_job_id else random.randint(10000, 60000)
 
     print(f"\n{'=' * 60}")
-    print(f"GR00T Parallel Evaluation")
+    print("GR00T Parallel Evaluation")
     print(f"{'=' * 60}")
     print(f"Model:     {model_path}")
     print(f"Video dir: {video_dir}")
@@ -267,7 +267,7 @@ def main():
     print(f"Workers:   {n_total_gpus} ({args.n_nodes} node(s) x {args.gpus_per_node} GPU(s))")
     print(f"Run ID:    {run_id}")
     print(f"Base port: {base_port}")
-    print(f"\nTask assignment:")
+    print("\nTask assignment:")
     for i, part in enumerate(partitions):
         horizons = [get_task_horizon(t) for t in part]
         total_h = sum(horizons)

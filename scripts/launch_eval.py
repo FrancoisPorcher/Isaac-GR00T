@@ -3,6 +3,11 @@
 
 Distributes tasks across multiple GPUs (and optionally multiple SLURM nodes).
 Each GPU runs an independent simulation pipeline via run_eval_distributed.py.
+
+Modes:
+  --local        Run on current node using available GPUs (default for 1 node).
+  (default)      Submit a single multi-node SLURM job via sbatch.
+  --status       Print progress from stats.json files and exit.
 """
 
 import argparse
@@ -130,7 +135,7 @@ def node_job(
     embodiment_tag: str,
     data_config: str,
 ) -> dict[int, dict]:
-    """Run all GPU workers on one node. Submitted by submitit (one per node)."""
+    """Run all GPU workers on one node via ThreadPoolExecutor."""
     non_empty = [(i, parts) for i, parts in enumerate(gpu_task_partitions) if parts]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(non_empty)) as pool:
@@ -202,6 +207,48 @@ def print_status(video_dir: str, split: str):
             print(f"  --- Average: {avg:.2f} ---")
 
 
+def run_slurm_worker():
+    """Entry point when running inside a SLURM job (called via srun on each node).
+
+    Reads partitions from the JSON file passed via EVAL_PARTITIONS_FILE env var,
+    selects this node's partition using SLURM_NODEID, and runs gpu workers.
+    """
+    partitions_file = os.environ["EVAL_PARTITIONS_FILE"]
+    with open(partitions_file) as f:
+        config = json.load(f)
+
+    node_id = int(os.environ.get("SLURM_NODEID", 0))
+    gpus_per_node = config["gpus_per_node"]
+    start = node_id * gpus_per_node
+    end = start + gpus_per_node
+    node_partitions = config["partitions"][start:end]
+
+    job_id = os.environ.get("SLURM_JOB_ID", "0")
+    base_port = int(job_id) % 10000 + 10000 + node_id * 100
+
+    print(f"[Node {node_id}] Running {len(node_partitions)} GPU workers (GPUs {start}-{end - 1})")
+
+    results = node_job(
+        gpu_task_partitions=node_partitions,
+        model_path=config["model_path"],
+        split=config["split"],
+        run_id=config["run_id"],
+        base_port=base_port,
+        n_episodes=config["n_episodes"],
+        n_envs=config["n_envs"],
+        n_action_steps=config["n_action_steps"],
+        video_dir=config["video_dir"],
+        embodiment_tag=config["embodiment_tag"],
+        data_config=config["data_config"],
+    )
+
+    failed = [wid for wid, info in results.items() if info["returncode"] != 0]
+    if failed:
+        print(f"[Node {node_id}] Failed workers: {failed}")
+        sys.exit(1)
+    print(f"[Node {node_id}] All workers completed successfully.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Parallel evaluation launcher for GR00T on RoboCasa365.")
     parser.add_argument("--model_path", type=str, required=True, help="Path to model checkpoint.")
@@ -227,12 +274,17 @@ def main():
     parser.add_argument("--video_dir", type=str, default=None, help="Directory to save videos.")
     parser.add_argument("--qos", type=str, default="h200_unicorns_high", help="SLURM QoS.")
     parser.add_argument("--time_hours", type=int, default=13, help="SLURM time limit (hours).")
-    parser.add_argument("--local", action="store_true", help="Run locally (skip SLURM).")
+    parser.add_argument("--local", action="store_true", help="Run locally on current node (skip SLURM).")
     parser.add_argument("--status", action="store_true", help="Print progress from stats.json files and exit.")
+    parser.add_argument("--slurm_worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--embodiment_tag", type=str, default="new_embodiment")
     parser.add_argument("--data_config", type=str, default="panda_omron")
 
     args = parser.parse_args()
+
+    if args.slurm_worker:
+        run_slurm_worker()
+        return
 
     model_path = str(Path(args.model_path).resolve())
     video_dir = args.video_dir or model_path
@@ -252,8 +304,7 @@ def main():
     partitions = partition_tasks(tasks, n_total_gpus)
     run_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    slurm_job_id = os.environ.get("SLURM_JOB_ID")
-    base_port = (int(slurm_job_id) % 10000 + 10000) if slurm_job_id else random.randint(10000, 60000)
+    base_port = random.randint(10000, 60000)
 
     print(f"\n{'=' * 60}")
     print("GR00T Parallel Evaluation")
@@ -275,6 +326,10 @@ def main():
     print(f"{'=' * 60}\n")
 
     if args.local:
+        slurm_job_id = os.environ.get("SLURM_JOB_ID")
+        if slurm_job_id:
+            base_port = int(slurm_job_id) % 10000 + 10000
+
         node_partitions = partitions[: args.gpus_per_node]
         results = node_job(
             gpu_task_partitions=node_partitions,
@@ -295,51 +350,66 @@ def main():
             sys.exit(1)
         print("\nAll workers completed successfully.")
     else:
-        try:
-            import submitit
-        except ImportError:
-            print("submitit not installed. Install with: pip install submitit")
-            print("Or use --local to run without SLURM.")
+        log_dir = os.path.join(video_dir, "slurm_logs", run_id)
+        os.makedirs(log_dir, exist_ok=True)
+
+        config = {
+            "partitions": [p for p in partitions],
+            "gpus_per_node": args.gpus_per_node,
+            "model_path": model_path,
+            "split": args.split,
+            "run_id": run_id,
+            "n_episodes": args.n_episodes,
+            "n_envs": args.n_envs,
+            "n_action_steps": args.n_action_steps,
+            "video_dir": video_dir,
+            "embodiment_tag": args.embodiment_tag,
+            "data_config": args.data_config,
+        }
+        config_path = os.path.join(log_dir, "config.json")
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=2)
+
+        python = VENV_PYTHON if os.path.exists(VENV_PYTHON) else sys.executable
+        launcher_script = str(Path(__file__).resolve())
+
+        sbatch_script = f"""#!/bin/bash
+#SBATCH --job-name=gr00t_eval_{run_id}
+#SBATCH --nodes={args.n_nodes}
+#SBATCH --ntasks-per-node=1
+#SBATCH --gpus-per-node={args.gpus_per_node}
+#SBATCH --cpus-per-task={args.gpus_per_node * 10}
+#SBATCH --mem=256G
+#SBATCH --time={args.time_hours}:00:00
+#SBATCH --qos={args.qos}
+#SBATCH --account=unicorns
+#SBATCH --output={log_dir}/slurm_%j.out
+#SBATCH --error={log_dir}/slurm_%j.err
+
+export EVAL_PARTITIONS_FILE="{config_path}"
+export LD_LIBRARY_PATH="/home/francoisporcher/miniforge3/lib:/usr/lib64:$LD_LIBRARY_PATH"
+export MUJOCO_GL=egl
+
+srun {python} {launcher_script} --model_path {model_path} --split {args.split} --slurm_worker
+"""
+        sbatch_path = os.path.join(log_dir, "submit.sbatch")
+        with open(sbatch_path, "w") as f:
+            f.write(sbatch_script)
+
+        result = subprocess.run(
+            ["sbatch", sbatch_path],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            print(f"sbatch failed: {result.stderr}")
             sys.exit(1)
 
-        log_dir = os.path.join(video_dir, "submitit_logs", run_id)
-        executor = submitit.AutoExecutor(folder=log_dir)
-        executor.update_parameters(
-            slurm_partition="learn",
-            slurm_qos=args.qos,
-            slurm_account="unicorns",
-            slurm_gres=f"gpu:{args.gpus_per_node}",
-            slurm_cpus_per_task=args.gpus_per_node * 10,
-            slurm_mem="256G",
-            timeout_min=args.time_hours * 60,
-            slurm_job_name=f"gr00t_eval_{run_id}",
-        )
-
-        jobs = []
-        for node_idx in range(args.n_nodes):
-            start = node_idx * args.gpus_per_node
-            end = start + args.gpus_per_node
-            node_parts = partitions[start:end]
-
-            job = executor.submit(
-                node_job,
-                gpu_task_partitions=node_parts,
-                model_path=model_path,
-                split=args.split,
-                run_id=run_id,
-                base_port=base_port,
-                n_episodes=args.n_episodes,
-                n_envs=args.n_envs,
-                n_action_steps=args.n_action_steps,
-                video_dir=video_dir,
-                embodiment_tag=args.embodiment_tag,
-                data_config=args.data_config,
-            )
-            jobs.append(job)
-            print(f"Submitted node {node_idx}: SLURM job {job.job_id}")
-
+        job_id = result.stdout.strip().split()[-1]
+        print(f"Submitted SLURM job {job_id} ({args.n_nodes} node(s), {n_total_gpus} GPUs)")
+        print(f"Logs: {log_dir}/slurm_{job_id}.out")
         print(
-            f"\nMonitor: .venv/bin/python scripts/launch_eval.py --model_path {model_path} --split {args.split} --video_dir {video_dir} --status"
+            f"\nMonitor: {python} {launcher_script} --model_path {model_path} --split {args.split} --video_dir {video_dir} --status"
         )
 
 

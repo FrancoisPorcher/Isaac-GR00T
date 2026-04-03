@@ -70,7 +70,6 @@ Save all large artifacts (model checkpoints, evaluation videos, training outputs
 └── full_eval_2_nodes/     # 2-node (16 GPU) evaluation outputs + videos
 ```
 
-**Why?** Home (`/storage/home`) is backed by shared NFS and currently holds 785G. The checkpoint partition has more capacity and is designed for large transient artifacts.
 
 **Evaluation example** — point `--video_dir` and `--model_path` to checkpoint storage:
 
@@ -92,25 +91,4 @@ The pretrained GR00T N1.5 checkpoint used for evaluation is at:
 
 ```
 checkpoints/gr00t_n1-5/multitask_learning/checkpoint-120000
-```
-
-## Parallel Evaluation
-
-The launcher distributes tasks across GPUs using greedy bin-packing by task horizon for balanced wall-clock time.
-
-```bash
-# Single node (8 GPUs)
-uv run scripts/launch_eval.py --model_path <path> --split target
-
-# Multi-node (2 nodes × 8 GPUs)
-uv run scripts/launch_eval.py --model_path <path> --split target --n_nodes 2
-
-# Local debug (1 GPU, 2 episodes)
-uv run scripts/launch_eval.py --model_path <path> --split target --local --gpus_per_node 1 --n_episodes 2
-
-# Check progress
-uv run scripts/launch_eval.py --model_path <path> --split target --status
-
-# Collect results
-uv run gr00t/eval/get_eval_stats.py --dir <model_path>
 ```

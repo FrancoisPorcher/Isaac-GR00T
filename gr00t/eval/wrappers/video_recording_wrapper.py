@@ -237,6 +237,8 @@ class VideoRecordingWrapper(gym.Wrapper):
             sanitized_desc = self._sanitize(str(task_desc))
             try_number = self.episode_count * self.n_envs + self.env_idx + 1
             filename = f"{sanitized_env}_{sanitized_desc}_try_{try_number:03d}.mp4"
+            if len(filename) > 250:
+                filename = f"{sanitized_env}_{sanitized_desc[: 200 - len(sanitized_env)]}_try_{try_number:03d}.mp4"
             self.file_path = self.video_dir / filename
             self.episode_count += 1
 

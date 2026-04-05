@@ -224,10 +224,7 @@ class VideoRecordingWrapper(gym.Wrapper):
         if self.file_path is not None and self.file_path.exists():
             prefix = "success" if self.is_success else "failure"
             new_path = self.file_path.parent / f"{prefix}_{self.file_path.name}"
-            try:
-                os.rename(self.file_path, new_path)
-            except OSError:
-                pass
+            os.rename(self.file_path, new_path)
 
         self.is_success = False
         result = super().reset(**kwargs)
@@ -262,7 +259,7 @@ class VideoRecordingWrapper(gym.Wrapper):
             frame = self._compose_frame(obs)
             assert frame.dtype == np.uint8
             self.video_recorder.write_frame(frame)
-            self.is_success = result[-1]["success"]
+            self.is_success = result[-1].get("success", False)
         return result
 
     def render(self, mode="rgb_array", **kwargs):

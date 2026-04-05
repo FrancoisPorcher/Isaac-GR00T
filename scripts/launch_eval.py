@@ -51,7 +51,8 @@ def run_gpu(gpu_id, tasks, model_path, split, run_id, base_port,
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
     env["MUJOCO_GL"] = "egl"
-    env["LD_LIBRARY_PATH"] = "/home/francoisporcher/miniforge3/lib:/usr/lib64:" + env.get("LD_LIBRARY_PATH", "")
+    conda_lib = os.path.join(os.environ.get("CONDA_PREFIX", ""), "lib")
+    env["LD_LIBRARY_PATH"] = f"{conda_lib}:/usr/lib64:" + env.get("LD_LIBRARY_PATH", "")
     cmd = [
         sys.executable, WORKER_SCRIPT,
         "--tasks", *tasks,
@@ -142,7 +143,7 @@ def main():
         h = sum(get_task_horizon(t) for t in part)
         print(f"  GPU {i:2d}: {len(part):2d} tasks, horizon={h:6d}  {part}")
 
-    log_dir = os.path.join(args.video_dir, run_id, "logs")
+    log_dir = os.path.join(args.video_dir, "slurm_logs", run_id)
     executor = submitit.AutoExecutor(folder=log_dir)
     executor.update_parameters(
         slurm_partition="learn",

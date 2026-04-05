@@ -66,7 +66,7 @@ def run_client(host, port, env_names, video_dir, split, n_episodes, n_envs, n_ac
     print(modality_config.keys())
 
     for env_name in env_names:
-        this_video_dir = os.path.join(video_dir, run_id, "evals", env_name)
+        this_video_dir = os.path.join(video_dir, "evals", split, run_id, env_name)
 
         stats_path = os.path.join(this_video_dir, "stats.json")
         if os.path.exists(stats_path):
@@ -88,7 +88,7 @@ def run_client(host, port, env_names, video_dir, split, n_episodes, n_envs, n_ac
         print(f"Running simulation for {env_name}...")
         for attempt in range(1, max_retries + 1):
             try:
-                env_name, episode_successes = simulation_client.run_simulation(config)
+                _, episode_successes = simulation_client.run_simulation(config)
                 break
             except Exception:
                 print(f"Exception for {env_name} on {hostname} GPU={gpu_id} (attempt {attempt}/{max_retries})!")
@@ -108,6 +108,7 @@ def run_client(host, port, env_names, video_dir, split, n_episodes, n_envs, n_ac
         print(f"Results for {env_name}:")
         print(f"Success rate: {success_rate:.2f}")
 
+        os.makedirs(this_video_dir, exist_ok=True)
         with open(stats_path, "w") as f:
             stats = {
                 "num_episodes": len(episode_successes),

@@ -93,7 +93,7 @@ def run_client(host, port, task_set_list, video_dir, split, n_episodes, n_envs, 
         # Run the simulation
         print(f"Running simulation for {env_name}...")
         try:
-            env_name, episode_successes = simulation_client.run_simulation(config)
+            _, episode_successes = simulation_client.run_simulation(config)
         except Exception:
             print(f"Exception for {env_name}!")
             traceback.print_exc()

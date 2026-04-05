@@ -101,6 +101,7 @@ dist
 *.log
 *.log.*
 log_test/
+sandbox.py
 
 # Data
 !**/alpaca-data-conversation.json

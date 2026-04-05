@@ -14,12 +14,14 @@
 # limitations under the License.
 
 import argparse
-import os
 import json
-import numpy as np
+import os
 import threading
 import time
+import traceback
 from datetime import datetime
+
+import numpy as np
 from robocasa.utils.dataset_registry import TASK_SET_REGISTRY
 from robocasa.utils.dataset_registry_utils import get_task_horizon
 
@@ -83,7 +85,8 @@ def run_client(host, port, task_set_list, video_dir, split, n_episodes, n_envs, 
             n_envs=n_envs,
             video=VideoConfig(video_dir=this_video_dir, env_name=env_name, n_envs=n_envs),
             multistep=MultiStepConfig(
-                n_action_steps=n_action_steps, max_episode_steps=horizon,
+                n_action_steps=n_action_steps,
+                max_episode_steps=horizon,
             ),
         )
 
@@ -91,8 +94,9 @@ def run_client(host, port, task_set_list, video_dir, split, n_episodes, n_envs, 
         print(f"Running simulation for {env_name}...")
         try:
             env_name, episode_successes = simulation_client.run_simulation(config)
-        except Exception as e:
-            print("Exception!", e)
+        except Exception:
+            print(f"Exception for {env_name}!")
+            traceback.print_exc()
             continue
 
         # Print results
@@ -135,7 +139,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--task_set",
         type=str,
-        nargs='+',
+        nargs="+",
         help="Name of the task soup(s)",
         required=True,
     )
@@ -147,9 +151,7 @@ if __name__ == "__main__":
         required=True,
     )
     parser.add_argument("--port", type=int, help="Port number for the server.", default=5555)
-    parser.add_argument(
-        "--host", type=str, help="Host address for the server.", default="localhost"
-    )
+    parser.add_argument("--host", type=str, help="Host address for the server.", default="localhost")
     parser.add_argument("--video_dir", type=str, help="Directory to save videos.", default=None)
     parser.add_argument("--n_episodes", type=int, help="Number of episodes to run.", default=50)
     parser.add_argument("--n_envs", type=int, help="Number of parallel environments.", default=5)
@@ -170,7 +172,7 @@ if __name__ == "__main__":
             data_config=args.data_config,
             model_path=args.model_path,
             embodiment_tag=args.embodiment_tag,
-            port=args.port
+            port=args.port,
         )
     elif args.client:
         run_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -190,7 +192,7 @@ if __name__ == "__main__":
         server_thread = threading.Thread(
             target=run_server,
             args=(args.data_config, args.model_path, args.embodiment_tag, args.port),
-            daemon=True
+            daemon=True,
         )
         server_thread.start()
         time.sleep(1)  # give server time to start

@@ -62,7 +62,7 @@ def compute_stats(
             with open(stats_path, 'r') as f:
                 this_data = json.load(f)
             
-            sr_key = f"success_rate"
+            sr_key = "success_rate"
             if sr_key in this_data:
                 stats[split][task_name] = this_data[sr_key]
 
@@ -88,8 +88,8 @@ def compute_stats(
         all_group_stats[group_name] = group_stats
 
         if verbose:
-            pretrain_avg = group_stats[f"avg_pretrain"]
-            target_avg = group_stats[f"avg_target"]
+            pretrain_avg = group_stats["avg_pretrain"]
+            target_avg = group_stats["avg_target"]
 
             if np.isnan(pretrain_avg) and np.isnan(target_avg):
                 continue

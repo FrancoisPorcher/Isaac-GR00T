@@ -32,7 +32,7 @@ import sys
 from dataclasses import dataclass
 import numpy as np
 from pathlib import Path
-from typing import List, Literal
+from typing import Literal
 
 import torch
 import tyro

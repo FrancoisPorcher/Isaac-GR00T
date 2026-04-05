@@ -224,7 +224,10 @@ class VideoRecordingWrapper(gym.Wrapper):
         if self.file_path is not None and self.file_path.exists():
             prefix = "success" if self.is_success else "failure"
             new_path = self.file_path.parent / f"{prefix}_{self.file_path.name}"
-            os.rename(self.file_path, new_path)
+            try:
+                os.rename(self.file_path, new_path)
+            except OSError:
+                pass
 
         self.is_success = False
         result = super().reset(**kwargs)
@@ -236,9 +239,13 @@ class VideoRecordingWrapper(gym.Wrapper):
             sanitized_env = self._sanitize(self.env_name)
             sanitized_desc = self._sanitize(str(task_desc))
             try_number = self.episode_count * self.n_envs + self.env_idx + 1
-            filename = f"{sanitized_env}_{sanitized_desc}_try_{try_number:03d}.mp4"
-            if len(filename) > 250:
-                filename = f"{sanitized_env}_{sanitized_desc[: 200 - len(sanitized_env)]}_try_{try_number:03d}.mp4"
+            suffix = f"_try_{try_number:03d}.mp4"
+            # Reserve 8 chars for "failure_" prefix added at rename time
+            max_base = 255 - 8 - len(suffix)
+            base = f"{sanitized_env}_{sanitized_desc}"
+            if len(base) > max_base:
+                base = base[:max_base]
+            filename = f"{base}{suffix}"
             self.file_path = self.video_dir / filename
             self.episode_count += 1
 

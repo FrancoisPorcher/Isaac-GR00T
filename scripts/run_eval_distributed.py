@@ -178,6 +178,8 @@ if __name__ == "__main__":
         help="Number of action steps per environment step.",
         default=16,
     )
+    parser.add_argument("--server", action="store_true", help="Run the server only.")
+    parser.add_argument("--client", action="store_true", help="Run the client only.")
     args = parser.parse_args()
 
     if args.task_set and args.tasks:
@@ -195,21 +197,41 @@ if __name__ == "__main__":
 
     run_id = args.run_id or datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    server_thread = threading.Thread(
-        target=run_server,
-        args=(args.data_config, args.model_path, args.embodiment_tag, args.port),
-        daemon=True,
-    )
-    server_thread.start()
-    time.sleep(1)
-    run_client(
-        host=args.host,
-        port=args.port,
-        env_names=env_names,
-        video_dir=args.video_dir or args.model_path,
-        split=args.split,
-        n_episodes=args.n_episodes,
-        n_envs=args.n_envs,
-        n_action_steps=args.n_action_steps,
-        run_id=run_id,
-    )
+    if args.server:
+        run_server(
+            data_config=args.data_config,
+            model_path=args.model_path,
+            embodiment_tag=args.embodiment_tag,
+            port=args.port,
+        )
+    elif args.client:
+        run_client(
+            host=args.host,
+            port=args.port,
+            env_names=env_names,
+            video_dir=args.video_dir or args.model_path,
+            split=args.split,
+            n_episodes=args.n_episodes,
+            n_envs=args.n_envs,
+            n_action_steps=args.n_action_steps,
+            run_id=run_id,
+        )
+    else:
+        server_thread = threading.Thread(
+            target=run_server,
+            args=(args.data_config, args.model_path, args.embodiment_tag, args.port),
+            daemon=True,
+        )
+        server_thread.start()
+        time.sleep(1)
+        run_client(
+            host=args.host,
+            port=args.port,
+            env_names=env_names,
+            video_dir=args.video_dir or args.model_path,
+            split=args.split,
+            n_episodes=args.n_episodes,
+            n_envs=args.n_envs,
+            n_action_steps=args.n_action_steps,
+            run_id=run_id,
+        )

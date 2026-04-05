@@ -143,7 +143,7 @@ def main():
         h = sum(get_task_horizon(t) for t in part)
         print(f"  GPU {i:2d}: {len(part):2d} tasks, horizon={h:6d}  {part}")
 
-    log_dir = os.path.join(args.video_dir, "slurm_logs", run_id)
+    log_dir = os.path.join(args.video_dir, run_id, "logs")
     executor = submitit.AutoExecutor(folder=log_dir)
     executor.update_parameters(
         slurm_partition="learn",

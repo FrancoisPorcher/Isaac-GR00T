@@ -19,7 +19,6 @@ import os
 import platform
 import threading
 import time
-import traceback
 from datetime import datetime
 
 import numpy as np
@@ -54,7 +53,7 @@ def run_server(data_config, model_path, embodiment_tag, port):
     server.run()
 
 
-def run_client(host, port, env_names, video_dir, split, n_episodes, n_envs, n_action_steps, run_id, max_retries=3):
+def run_client(host, port, env_names, video_dir, split, n_episodes, n_envs, n_action_steps, run_id):
     hostname = platform.node()
     gpu_id = os.environ.get("CUDA_VISIBLE_DEVICES", "?")
     print(f"[Worker hostname={hostname} GPU={gpu_id}] Starting evaluation of {len(env_names)} tasks")
@@ -66,13 +65,14 @@ def run_client(host, port, env_names, video_dir, split, n_episodes, n_envs, n_ac
     print(modality_config.keys())
 
     for env_name in env_names:
-        this_video_dir = os.path.join(video_dir, "evals", split, run_id, env_name)
+        this_video_dir = os.path.join(video_dir, run_id, "evals", env_name)
 
         stats_path = os.path.join(this_video_dir, "stats.json")
         if os.path.exists(stats_path):
             print(f"{env_name} stats already exists. skipping.")
             continue
         horizon = get_task_horizon(env_name)
+        print(f"  Task horizon: {horizon}")
         config = SimulationConfig(
             env_name=f"robocasa/{env_name}",
             split=split,
@@ -86,22 +86,7 @@ def run_client(host, port, env_names, video_dir, split, n_episodes, n_envs, n_ac
         )
 
         print(f"Running simulation for {env_name}...")
-        for attempt in range(1, max_retries + 1):
-            try:
-                _, episode_successes = simulation_client.run_simulation(config)
-                break
-            except Exception:
-                print(f"Exception for {env_name} on {hostname} GPU={gpu_id} (attempt {attempt}/{max_retries})!")
-                traceback.print_exc()
-                if attempt == max_retries:
-                    print(f"Giving up on {env_name} after {max_retries} attempts.")
-                    episode_successes = None
-                else:
-                    print(f"Retrying {env_name}...")
-                    time.sleep(2)
-
-        if episode_successes is None:
-            continue
+        _, episode_successes = simulation_client.run_simulation(config)
 
         success_rate = np.mean(episode_successes)
 

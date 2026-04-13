@@ -71,7 +71,9 @@ class BaseInferenceServer:
         """
         return {"status": "ok", "message": "Server is running"}
 
-    def register_endpoint(self, name: str, handler: Callable, requires_input: bool = True):
+    def register_endpoint(
+        self, name: str, handler: Callable, requires_input: bool = True
+    ):
         """
         Register a new endpoint to the server.
 
@@ -101,7 +103,9 @@ class BaseInferenceServer:
                 # Validate token before processing request
                 if not self._validate_token(request):
                     self.socket.send(
-                        TorchSerializer.to_bytes({"error": "Unauthorized: Invalid API token"})
+                        TorchSerializer.to_bytes(
+                            {"error": "Unauthorized: Invalid API token"}
+                        )
                     )
                     continue
 

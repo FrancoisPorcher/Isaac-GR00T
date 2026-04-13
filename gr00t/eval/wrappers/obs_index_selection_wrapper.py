@@ -69,10 +69,14 @@ class ObsIndexSelectionWrapper(gym.Wrapper):
         new_obs = {}
         for k in obs.keys():
             if k.startswith("video"):
-                new_obs[k] = self.select_steps_for_values(obs[k], self.video_delta_indices)
+                new_obs[k] = self.select_steps_for_values(
+                    obs[k], self.video_delta_indices
+                )
             elif k.startswith("state"):
                 if self.state_delta_indices is not None:
-                    new_obs[k] = self.select_steps_for_values(obs[k], self.state_delta_indices)
+                    new_obs[k] = self.select_steps_for_values(
+                        obs[k], self.state_delta_indices
+                    )
                 else:
                     # Don't include the state in the observation
                     continue
@@ -80,7 +84,9 @@ class ObsIndexSelectionWrapper(gym.Wrapper):
                 raise ValueError(f"Unknown key: {k}")
         return new_obs
 
-    def convert_observation_space(self, observation_space, video_horizon, state_horizon):
+    def convert_observation_space(
+        self, observation_space, video_horizon, state_horizon
+    ):
         new_observation_space = {}
         for k in observation_space.keys():
             box = observation_space[k]

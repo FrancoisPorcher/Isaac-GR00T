@@ -50,7 +50,9 @@ else:
     from torchvision.transforms import functional as F
 
 
-def crop(img: torch.Tensor, left: int, top: int, right: int, bottom: int) -> torch.Tensor:
+def crop(
+    img: torch.Tensor, left: int, top: int, right: int, bottom: int
+) -> torch.Tensor:
     """Crop the given numpy array.
 
     Args:
@@ -213,14 +215,20 @@ class Eagle2_5_VLImageProcessorFast(BaseImageProcessorFast):
         Returns:
             "torch.Tensor": The resized and padded image.
         """
-        new_height, new_width = get_patch_output_size(image, target_resolution, input_data_format)
+        new_height, new_width = get_patch_output_size(
+            image, target_resolution, input_data_format
+        )
 
         # Resize the image
-        resized_image = F.resize(image, (new_height, new_width), interpolation=interpolation)
+        resized_image = F.resize(
+            image, (new_height, new_width), interpolation=interpolation
+        )
 
         return resized_image
 
-    def find_closest_aspect_ratio(self, aspect_ratio, target_ratios, width, height, image_size):
+    def find_closest_aspect_ratio(
+        self, aspect_ratio, target_ratios, width, height, image_size
+    ):
         """
         previous version mainly foucs on ratio.
         We also consider area ratio here.
@@ -237,7 +245,9 @@ class Eagle2_5_VLImageProcessorFast(BaseImageProcessorFast):
             """
             factor_based_on_area_n_ratio = min(
                 (ratio[0] * ratio[1] * image_size * image_size) / area, 0.6
-            ) * min(target_aspect_ratio / aspect_ratio, aspect_ratio / target_aspect_ratio)
+            ) * min(
+                target_aspect_ratio / aspect_ratio, aspect_ratio / target_aspect_ratio
+            )
 
             if factor_based_on_area_n_ratio > best_factor:
                 best_factor = factor_based_on_area_n_ratio
@@ -246,13 +256,18 @@ class Eagle2_5_VLImageProcessorFast(BaseImageProcessorFast):
         return best_ratio
 
     def _pad_for_patching(
-        self, image: "torch.Tensor", target_resolution: tuple, input_data_format: ChannelDimension
+        self,
+        image: "torch.Tensor",
+        target_resolution: tuple,
+        input_data_format: ChannelDimension,
     ) -> "torch.Tensor":
         """
         Pad an image to a target resolution while maintaining aspect ratio.
         """
         target_height, target_width = target_resolution
-        new_height, new_width = get_patch_output_size(image, target_resolution, input_data_format)
+        new_height, new_width = get_patch_output_size(
+            image, target_resolution, input_data_format
+        )
 
         paste_x = (target_width - new_width) // 2
         paste_y = (target_height - new_height) // 2
@@ -327,7 +342,9 @@ class Eagle2_5_VLImageProcessorFast(BaseImageProcessorFast):
         assert len(processed_tiles) == blocks
 
         if use_thumbnail and len(processed_tiles) != 1:
-            thumbnail_img = F.resize(image, (tile_size, tile_size), interpolation=interpolation)
+            thumbnail_img = F.resize(
+                image, (tile_size, tile_size), interpolation=interpolation
+            )
             processed_tiles.append(thumbnail_img)
 
         return processed_tiles
@@ -348,7 +365,9 @@ class Eagle2_5_VLImageProcessorFast(BaseImageProcessorFast):
         """
         max_patch = max(len(x) for x in pixel_values)
         pixel_values = [
-            torch.nn.functional.pad(image, pad=[0, 0, 0, 0, 0, 0, 0, max_patch - image.shape[0]])
+            torch.nn.functional.pad(
+                image, pad=[0, 0, 0, 0, 0, 0, 0, max_patch - image.shape[0]]
+            )
             for image in pixel_values
         ]
 
@@ -416,7 +435,9 @@ class Eagle2_5_VLImageProcessorFast(BaseImageProcessorFast):
                         interpolation=interpolation,
                     )
                 if do_center_crop:
-                    stacked_image_patches = self.center_crop(stacked_image_patches, crop_size)
+                    stacked_image_patches = self.center_crop(
+                        stacked_image_patches, crop_size
+                    )
                 # Fused rescale and normalize
                 stacked_image_patches = self.rescale_and_normalize(
                     stacked_image_patches,

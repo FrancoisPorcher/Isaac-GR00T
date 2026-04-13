@@ -27,7 +27,6 @@ DEFAULT_EAGLE_PATH = os.path.join(
 
 
 class EagleBackbone(nn.Module):
-
     def __init__(
         self,
         tune_llm: bool = False,
@@ -45,7 +44,9 @@ class EagleBackbone(nn.Module):
             tune_visual: whether to tune the visual model (default: False)
         """
         super().__init__()
-        assert not reproject_vision, "Reproject vision is not implemented here, set to False"
+        assert not reproject_vision, (
+            "Reproject vision is not implemented here, set to False"
+        )
 
         config = AutoConfig.from_pretrained(DEFAULT_EAGLE_PATH, trust_remote_code=True)
         self.eagle_model = AutoModel.from_config(config, trust_remote_code=True)
@@ -106,7 +107,9 @@ class EagleBackbone(nn.Module):
         }
         del eagle_input["image_sizes"]
 
-        eagle_output = self.eagle_model(**eagle_input, output_hidden_states=True, return_dict=True)
+        eagle_output = self.eagle_model(
+            **eagle_input, output_hidden_states=True, return_dict=True
+        )
         eagle_features = eagle_output.hidden_states[self.select_layer]
 
         eagle_features = self.eagle_linear(eagle_features)
@@ -121,7 +124,10 @@ class EagleBackbone(nn.Module):
         # Ensure all trainable parameters in vision_model are used in the forward pass for DDP compatibility
         if self.training and self.tune_visual:
             dummy_term = torch.tensor(
-                0.0, device=eagle_embeds.device, dtype=eagle_embeds.dtype, requires_grad=True
+                0.0,
+                device=eagle_embeds.device,
+                dtype=eagle_embeds.dtype,
+                requires_grad=True,
             )
             for param in self.eagle_model.vision_model.parameters():
                 if param.requires_grad:
@@ -129,5 +135,8 @@ class EagleBackbone(nn.Module):
             eagle_embeds = eagle_embeds + dummy_term
 
         return BatchFeature(
-            data={"backbone_features": eagle_embeds, "backbone_attention_mask": eagle_mask}
+            data={
+                "backbone_features": eagle_embeds,
+                "backbone_attention_mask": eagle_mask,
+            }
         )  # [B, T2, hidden_size]

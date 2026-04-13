@@ -36,7 +36,9 @@ class VideoTransform(ModalityTransform):
     # Model variables
     _train_transform: Callable | None = PrivateAttr(default=None)
     _eval_transform: Callable | None = PrivateAttr(default=None)
-    _original_resolutions: dict[str, tuple[int, int]] = PrivateAttr(default_factory=dict)
+    _original_resolutions: dict[str, tuple[int, int]] = PrivateAttr(
+        default_factory=dict
+    )
 
     # Model constants
     _INTERPOLATION_MAP: ClassVar[dict[str, dict[str, Any]]] = PrivateAttr(
@@ -78,9 +80,9 @@ class VideoTransform(ModalityTransform):
 
     @property
     def train_transform(self) -> Callable:
-        assert (
-            self._train_transform is not None
-        ), "Transform is not set. Please call set_metadata() before calling apply()."
+        assert self._train_transform is not None, (
+            "Transform is not set. Please call set_metadata() before calling apply()."
+        )
         return self._train_transform
 
     @train_transform.setter
@@ -97,9 +99,9 @@ class VideoTransform(ModalityTransform):
 
     @property
     def original_resolutions(self) -> dict[str, tuple[int, int]]:
-        assert (
-            self._original_resolutions is not None
-        ), "Original resolutions are not set. Please call set_metadata() before calling apply()."
+        assert self._original_resolutions is not None, (
+            "Original resolutions are not set. Please call set_metadata() before calling apply()."
+        )
         return self._original_resolutions
 
     @original_resolutions.setter
@@ -109,18 +111,26 @@ class VideoTransform(ModalityTransform):
     def check_input(self, data: dict[str, Any]):
         if self.backend == "torchvision":
             for key in self.apply_to:
-                assert isinstance(data[key], torch.Tensor), f"Video {key} is not a torch tensor"
+                assert isinstance(data[key], torch.Tensor), (
+                    f"Video {key} is not a torch tensor"
+                )
                 assert data[key].ndim in [
                     4,
                     5,
-                ], f"Expected video {key} to have 4 or 5 dimensions (T, C, H, W or T, B, C, H, W), got {data[key].ndim}"
+                ], (
+                    f"Expected video {key} to have 4 or 5 dimensions (T, C, H, W or T, B, C, H, W), got {data[key].ndim}"
+                )
         elif self.backend == "albumentations":
             for key in self.apply_to:
-                assert isinstance(data[key], np.ndarray), f"Video {key} is not a numpy array"
+                assert isinstance(data[key], np.ndarray), (
+                    f"Video {key} is not a numpy array"
+                )
                 assert data[key].ndim in [
                     4,
                     5,
-                ], f"Expected video {key} to have 4 or 5 dimensions (T, C, H, W or T, B, C, H, W), got {data[key].ndim}"
+                ], (
+                    f"Expected video {key} to have 4 or 5 dimensions (T, C, H, W or T, B, C, H, W), got {data[key].ndim}"
+                )
         else:
             raise ValueError(f"Backend {self.backend} not supported")
 
@@ -129,7 +139,9 @@ class VideoTransform(ModalityTransform):
         self.original_resolutions = {}
         for key in self.apply_to:
             split_keys = key.split(".")
-            assert len(split_keys) == 2, f"Invalid key: {key}. Expected format: modality.key"
+            assert len(split_keys) == 2, (
+                f"Invalid key: {key}. Expected format: modality.key"
+            )
             sub_key = split_keys[1]
             if sub_key in dataset_metadata.modalities.video:
                 self.original_resolutions[key] = dataset_metadata.modalities.video[
@@ -157,9 +169,9 @@ class VideoTransform(ModalityTransform):
             transform = self.eval_transform
             if transform is None:
                 return data
-        assert (
-            transform is not None
-        ), "Transform is not set. Please call set_metadata() before calling apply()."
+        assert transform is not None, (
+            "Transform is not set. Please call set_metadata() before calling apply()."
+        )
         try:
             self.check_input(data)
         except AssertionError as e:
@@ -179,12 +191,16 @@ class VideoTransform(ModalityTransform):
         else:
             raise ValueError(f"Unsupported view type: {type(views[0])}")
         if is_batched:
-            views = rearrange(views, "(v b) t c h w -> (v b t) c h w", v=num_views, b=bs)
+            views = rearrange(
+                views, "(v b) t c h w -> (v b t) c h w", v=num_views, b=bs
+            )
         # Apply the transform
         if self.backend == "torchvision":
             views = transform(views)
         elif self.backend == "albumentations":
-            assert isinstance(transform, A.ReplayCompose), "Transform must be a ReplayCompose"
+            assert isinstance(transform, A.ReplayCompose), (
+                "Transform must be a ReplayCompose"
+            )
             first_frame = views[0]
             transformed = transform(image=first_frame)
             replay_data = transformed["replay"]
@@ -193,7 +209,8 @@ class VideoTransform(ModalityTransform):
             if len(views) > 1:
                 # Apply the same transformations to the rest of the frames
                 transformed_frames = [
-                    transform.replay(replay_data, image=frame)["image"] for frame in views[1:]
+                    transform.replay(replay_data, image=frame)["image"]
+                    for frame in views[1:]
                 ]
                 # Add the first frame back
                 transformed_frames = [transformed_first_frame] + transformed_frames
@@ -234,14 +251,18 @@ class VideoTransform(ModalityTransform):
         """
         return self._INTERPOLATION_MAP[interpolation][backend]
 
-    def get_transform(self, mode: Literal["train", "eval"] = "train") -> Callable | None:
+    def get_transform(
+        self, mode: Literal["train", "eval"] = "train"
+    ) -> Callable | None:
         raise NotImplementedError(
             "set_transform is not implemented for VideoTransform. Please implement this function to set the transforms."
         )
 
 
 class VideoCrop(VideoTransform):
-    height: int | None = Field(default=None, description="The height of the input image")
+    height: int | None = Field(
+        default=None, description="The height of the input image"
+    )
     width: int | None = Field(default=None, description="The width of the input image")
     scale: float = Field(
         ...,
@@ -258,16 +279,18 @@ class VideoCrop(VideoTransform):
             Callable: If mode is "train", return a random crop transform. If mode is "eval", return a center crop transform.
         """
         # 1. Check the input resolution
-        assert (
-            len(set(self.original_resolutions.values())) == 1
-        ), f"All video keys must have the same resolution, got: {self.original_resolutions}"
+        assert len(set(self.original_resolutions.values())) == 1, (
+            f"All video keys must have the same resolution, got: {self.original_resolutions}"
+        )
         if self.height is None:
-            assert self.width is None, "Height and width must be either both provided or both None"
+            assert self.width is None, (
+                "Height and width must be either both provided or both None"
+            )
             self.width, self.height = self.original_resolutions[self.apply_to[0]]
         else:
-            assert (
-                self.width is not None
-            ), "Height and width must be either both provided or both None"
+            assert self.width is not None, (
+                "Height and width must be either both provided or both None"
+            )
         # 2. Create the transform
         size = (int(self.height * self.scale), int(self.width * self.scale))
         if self.backend == "torchvision":
@@ -297,9 +320,9 @@ class VideoCrop(VideoTransform):
                 height, width = data[key].shape[-3:-1]
             else:
                 raise ValueError(f"Backend {self.backend} not supported")
-            assert (
-                height == self.height and width == self.width
-            ), f"Video {key} has invalid shape {height, width}, expected {self.height, self.width}"
+            assert height == self.height and width == self.width, (
+                f"Video {key} has invalid shape {height, width}, expected {self.height, self.width}"
+            )
 
 
 class VideoResize(VideoTransform):
@@ -352,7 +375,9 @@ class VideoRandomRotation(VideoTransform):
         cls._validate_interpolation(v)
         return v
 
-    def get_transform(self, mode: Literal["train", "eval"] = "train") -> Callable | None:
+    def get_transform(
+        self, mode: Literal["train", "eval"] = "train"
+    ) -> Callable | None:
         """Get the random rotation transform, only used in train mode.
 
         Args:
@@ -379,7 +404,9 @@ class VideoRandomRotation(VideoTransform):
 class VideoHorizontalFlip(VideoTransform):
     p: float = Field(..., description="The probability of the horizontal flip")
 
-    def get_transform(self, mode: Literal["train", "eval"] = "train") -> Callable | None:
+    def get_transform(
+        self, mode: Literal["train", "eval"] = "train"
+    ) -> Callable | None:
         """Get the horizontal flip transform, only used in train mode.
 
         Args:
@@ -401,7 +428,9 @@ class VideoHorizontalFlip(VideoTransform):
 class VideoGrayscale(VideoTransform):
     p: float = Field(..., description="The probability of the grayscale transformation")
 
-    def get_transform(self, mode: Literal["train", "eval"] = "train") -> Callable | None:
+    def get_transform(
+        self, mode: Literal["train", "eval"] = "train"
+    ) -> Callable | None:
         """Get the grayscale transform, only used in train mode.
 
         Args:
@@ -430,9 +459,13 @@ class VideoColorJitter(VideoTransform):
     saturation: float | tuple[float, float] = Field(
         ..., description="The saturation of the color jitter"
     )
-    hue: float | tuple[float, float] = Field(..., description="The hue of the color jitter")
+    hue: float | tuple[float, float] = Field(
+        ..., description="The hue of the color jitter"
+    )
 
-    def get_transform(self, mode: Literal["train", "eval"] = "train") -> Callable | None:
+    def get_transform(
+        self, mode: Literal["train", "eval"] = "train"
+    ) -> Callable | None:
         """Get the color jitter transform, only used in train mode.
 
         Args:
@@ -465,7 +498,9 @@ class VideoColorJitter(VideoTransform):
 class VideoRandomGrayscale(VideoTransform):
     p: float = Field(..., description="The probability of the grayscale transformation")
 
-    def get_transform(self, mode: Literal["train", "eval"] = "train") -> Callable | None:
+    def get_transform(
+        self, mode: Literal["train", "eval"] = "train"
+    ) -> Callable | None:
         """Get the grayscale transform, only used in train mode.
 
         Args:
@@ -488,7 +523,9 @@ class VideoRandomPosterize(VideoTransform):
     bits: int = Field(..., description="The number of bits to posterize the image")
     p: float = Field(..., description="The probability of the posterize transformation")
 
-    def get_transform(self, mode: Literal["train", "eval"] = "train") -> Callable | None:
+    def get_transform(
+        self, mode: Literal["train", "eval"] = "train"
+    ) -> Callable | None:
         """Get the posterize transform, only used in train mode.
 
         Args:
@@ -527,22 +564,24 @@ class VideoToTensor(VideoTransform):
         Expected video shape: [T, H, W, C], dtype np.uint8
         """
         for key in self.apply_to:
-            assert key in data, f"Key {key} not found in data. Available keys: {data.keys()}"
+            assert key in data, (
+                f"Key {key} not found in data. Available keys: {data.keys()}"
+            )
             assert data[key].ndim in [
                 4,
                 5,
             ], f"Video {key} must have 4 or 5 dimensions, got {data[key].ndim}"
-            assert (
-                data[key].dtype == np.uint8
-            ), f"Video {key} must have dtype uint8, got {data[key].dtype}"
+            assert data[key].dtype == np.uint8, (
+                f"Video {key} must have dtype uint8, got {data[key].dtype}"
+            )
             input_resolution = data[key].shape[-3:-1][::-1]
             if key in self.original_resolutions:
                 expected_resolution = self.original_resolutions[key]
             else:
                 expected_resolution = input_resolution
-            assert (
-                input_resolution == expected_resolution
-            ), f"Video {key} has invalid resolution {input_resolution}, expected {expected_resolution}. Full shape: {data[key].shape}"
+            assert input_resolution == expected_resolution, (
+                f"Video {key} has invalid resolution {input_resolution}, expected {expected_resolution}. Full shape: {data[key].shape}"
+            )
 
     @staticmethod
     def to_tensor(frames: np.ndarray) -> torch.Tensor:

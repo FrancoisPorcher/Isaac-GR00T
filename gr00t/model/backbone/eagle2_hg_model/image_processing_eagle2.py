@@ -98,7 +98,9 @@ def crop(
 
 
 # Copied from transformers.models.llava_next.image_processing_llava_next.divide_to_patches
-def divide_to_patches(image: np.array, patch_size: int, input_data_format) -> List[np.array]:
+def divide_to_patches(
+    image: np.array, patch_size: int, input_data_format
+) -> List[np.array]:
     """
     Divides an image into patches of a specified size.
 
@@ -136,18 +138,26 @@ def expand_to_square(image: np.array, background_color, input_data_format) -> np
     if width == height:
         return image
     elif width > height:
-        result = np.ones((width, width, image.shape[2]), dtype=image.dtype) * background_color
+        result = (
+            np.ones((width, width, image.shape[2]), dtype=image.dtype)
+            * background_color
+        )
         result[(width - height) // 2 : (width - height) // 2 + height, :] = image
         return result
     else:
-        result = np.ones((height, height, image.shape[2]), dtype=image.dtype) * background_color
+        result = (
+            np.ones((height, height, image.shape[2]), dtype=image.dtype)
+            * background_color
+        )
         result[:, (height - width) // 2 : (height - width) // 2 + width] = image
         return result
 
 
 # Copied from transformers.models.llava_next.image_processing_llava_next._get_patch_output_size
 def _get_patch_output_size(image, target_resolution, input_data_format):
-    original_height, original_width = get_image_size(image, channel_dim=input_data_format)
+    original_height, original_width = get_image_size(
+        image, channel_dim=input_data_format
+    )
     target_height, target_width = target_resolution
 
     scale_w = target_width / original_width
@@ -233,7 +243,9 @@ class Eagle2ImageProcessor(BaseImageProcessor):
         self.do_rescale = do_rescale
         self.rescale_factor = rescale_factor
         self.do_normalize = do_normalize
-        self.image_mean = image_mean if image_mean is not None else IMAGENET_STANDARD_MEAN
+        self.image_mean = (
+            image_mean if image_mean is not None else IMAGENET_STANDARD_MEAN
+        )
         self.image_std = image_std if image_std is not None else IMAGENET_STANDARD_STD
         self.do_pad = do_pad
         self.do_convert_rgb = do_convert_rgb
@@ -292,12 +304,16 @@ class Eagle2ImageProcessor(BaseImageProcessor):
 
         # call the general `pad` if padding on `height/width`, otherwise it's the `num_patched` dim
         if isinstance(padding, int) or len(padding) != 4:
-            return pad(image, padding, mode, constant_values, data_format, input_data_format)
+            return pad(
+                image, padding, mode, constant_values, data_format, input_data_format
+            )
 
         if input_data_format is None:
             input_data_format = infer_channel_dimension_format(image)
         if mode == PaddingMode.CONSTANT:
-            image = np.pad(image, padding, mode="constant", constant_values=constant_values)
+            image = np.pad(
+                image, padding, mode="constant", constant_values=constant_values
+            )
         elif mode == PaddingMode.REFLECT:
             image = np.pad(image, padding, mode="reflect")
         elif mode == PaddingMode.REPLICATE:
@@ -338,23 +354,33 @@ class Eagle2ImageProcessor(BaseImageProcessor):
             np.array: The resized and padded image.
         """
 
-        new_height, new_width = _get_patch_output_size(image, target_resolution, input_data_format)
+        new_height, new_width = _get_patch_output_size(
+            image, target_resolution, input_data_format
+        )
         # Resize the image
         resized_image = resize(
-            image, (new_height, new_width), resample=resample, input_data_format=input_data_format
+            image,
+            (new_height, new_width),
+            resample=resample,
+            input_data_format=input_data_format,
         )
 
         return resized_image
 
     # Copied from transformers.models.llava_next.image_processing_llava_next.LlavaNextImageProcessor._pad_for_patching
     def _pad_for_patching(
-        self, image: np.array, target_resolution: tuple, input_data_format: ChannelDimension
+        self,
+        image: np.array,
+        target_resolution: tuple,
+        input_data_format: ChannelDimension,
     ) -> np.array:
         """
         Pad an image to a target resolution while maintaining aspect ratio.
         """
         target_height, target_width = target_resolution
-        new_height, new_width = _get_patch_output_size(image, target_resolution, input_data_format)
+        new_height, new_width = _get_patch_output_size(
+            image, target_resolution, input_data_format
+        )
 
         paste_x = (target_width - new_width) // 2
         paste_y = (target_height - new_height) // 2
@@ -363,7 +389,9 @@ class Eagle2ImageProcessor(BaseImageProcessor):
 
         return padded_image
 
-    def find_closest_aspect_ratio(self, aspect_ratio, target_ratios, width, height, image_size):
+    def find_closest_aspect_ratio(
+        self, aspect_ratio, target_ratios, width, height, image_size
+    ):
         """
         previous version mainly foucs on ratio.
         We also consider area ratio here.
@@ -380,7 +408,9 @@ class Eagle2ImageProcessor(BaseImageProcessor):
             """
             factor_based_on_area_n_ratio = min(
                 (ratio[0] * ratio[1] * image_size * image_size) / area, 0.6
-            ) * min(target_aspect_ratio / aspect_ratio, aspect_ratio / target_aspect_ratio)
+            ) * min(
+                target_aspect_ratio / aspect_ratio, aspect_ratio / target_aspect_ratio
+            )
 
             if factor_based_on_area_n_ratio > best_factor:
                 best_factor = factor_based_on_area_n_ratio
@@ -431,7 +461,9 @@ class Eagle2ImageProcessor(BaseImageProcessor):
                 input_data_format=input_data_format,
             )
             padded_image = self._pad_for_patching(
-                resized_image, (target_height, target_width), input_data_format=input_data_format
+                resized_image,
+                (target_height, target_width),
+                input_data_format=input_data_format,
             )
             image_used_to_split = padded_image
         else:
@@ -451,7 +483,9 @@ class Eagle2ImageProcessor(BaseImageProcessor):
                 ((i // (target_width // tile_size)) + 1) * tile_size,
             )
             # split the image
-            split_img = crop(image_used_to_split, box[0], box[1], box[2], box[3], input_data_format)
+            split_img = crop(
+                image_used_to_split, box[0], box[1], box[2], box[3], input_data_format
+            )
             processed_tiles.append(split_img)
         assert len(processed_tiles) == blocks
 
@@ -568,27 +602,39 @@ class Eagle2ImageProcessor(BaseImageProcessor):
             assert False, "do_resize is not supported"
             images = [
                 resize(
-                    image=image, size=size, resample=resample, input_data_format=input_data_format
+                    image=image,
+                    size=size,
+                    resample=resample,
+                    input_data_format=input_data_format,
                 )
                 for image in images
             ]
 
         if do_rescale:
             images = [
-                self.rescale(image=image, scale=rescale_factor, input_data_format=input_data_format)
+                self.rescale(
+                    image=image,
+                    scale=rescale_factor,
+                    input_data_format=input_data_format,
+                )
                 for image in images
             ]
 
         if do_normalize:
             images = [
                 self.normalize(
-                    image=image, mean=image_mean, std=image_std, input_data_format=input_data_format
+                    image=image,
+                    mean=image_mean,
+                    std=image_std,
+                    input_data_format=input_data_format,
                 )
                 for image in images
             ]
 
         images = [
-            to_channel_dimension_format(image, data_format, input_channel_dim=input_data_format)
+            to_channel_dimension_format(
+                image, data_format, input_channel_dim=input_data_format
+            )
             for image in images
         ]
 
@@ -665,12 +711,16 @@ class Eagle2ImageProcessor(BaseImageProcessor):
         size = get_size_dict(size, default_to_square=False)
         resample = resample if resample is not None else self.resample
         do_rescale = do_rescale if do_rescale is not None else self.do_rescale
-        rescale_factor = rescale_factor if rescale_factor is not None else self.rescale_factor
+        rescale_factor = (
+            rescale_factor if rescale_factor is not None else self.rescale_factor
+        )
         do_normalize = do_normalize if do_normalize is not None else self.do_normalize
         image_mean = image_mean if image_mean is not None else self.image_mean
         image_std = image_std if image_std is not None else self.image_std
         do_pad = do_pad if do_pad is not None else self.do_pad
-        do_convert_rgb = do_convert_rgb if do_convert_rgb is not None else self.do_convert_rgb
+        do_convert_rgb = (
+            do_convert_rgb if do_convert_rgb is not None else self.do_convert_rgb
+        )
 
         images = make_flat_list_of_images(images)
 
@@ -708,7 +758,9 @@ class Eagle2ImageProcessor(BaseImageProcessor):
             input_data_format = infer_channel_dimension_format(images[0])
 
         processed_images = []
-        image_sizes = [get_image_size(image, channel_dim=input_data_format) for image in images]
+        image_sizes = [
+            get_image_size(image, channel_dim=input_data_format) for image in images
+        ]
         for image in images:
             # convert image into a list of patches
             # we intentially use the same data format as the input data format

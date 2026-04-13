@@ -43,7 +43,9 @@ class RobotInferenceClient(BaseInferenceClient, BasePolicy):
     Client for communicating with the RealRobotServer
     """
 
-    def __init__(self, host: str = "localhost", port: int = 5555, api_token: str = None):
+    def __init__(
+        self, host: str = "localhost", port: int = 5555, api_token: str = None
+    ):
         super().__init__(host=host, port=port, api_token=api_token)
 
     def get_action(self, observations: Dict[str, Any]) -> Dict[str, Any]:

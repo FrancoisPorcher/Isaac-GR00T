@@ -47,7 +47,9 @@ def print_yellow(text: str) -> None:
 class ArgsConfig:
     """Configuration for loading the dataset."""
 
-    dataset_path: List[str] = field(default_factory=lambda: ["demo_data/robot_sim.PickNPlace"])
+    dataset_path: List[str] = field(
+        default_factory=lambda: ["demo_data/robot_sim.PickNPlace"]
+    )
     """Path to the dataset."""
 
     embodiment_tag: Literal[tuple(EMBODIMENT_TAG_MAPPING.keys())] = "gr1"
@@ -206,7 +208,9 @@ def load_dataset(
     print(f"action_modality_keys: {action_modality_keys}")
 
     # remove dummy_tensor from state_modality_keys
-    state_modality_keys = [key for key in state_modality_keys if key != "state.dummy_tensor"]
+    state_modality_keys = [
+        key for key in state_modality_keys if key != "state.dummy_tensor"
+    ]
 
     # 2. construct modality configs from dataset
     modality_configs = {
@@ -333,7 +337,7 @@ def load_dataset(
     for i, ax in enumerate(axs.flat):
         ax.imshow(images_list[i])
         ax.axis("off")
-        ax.set_title(f"Image {i*skip_frames}")
+        ax.set_title(f"Image {i * skip_frames}")
     plt.tight_layout()  # adjust the subplots to fit into the figure area.
     plt.show()
 

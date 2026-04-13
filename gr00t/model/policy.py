@@ -167,7 +167,7 @@ class Gr00tPolicy(BasePolicy):
         """
         # Create a copy to avoid mutating input
         obs_copy = observations.copy()
-       
+
         is_batch = self._check_state_is_batched(obs_copy)
         if not is_batch:
             obs_copy = unsqueeze_dict_values(obs_copy)
@@ -185,15 +185,22 @@ class Gr00tPolicy(BasePolicy):
             unnormalized_action = squeeze_dict_values(unnormalized_action)
         return unnormalized_action
 
-    def _get_action_from_normalized_input(self, normalized_input: Dict[str, Any]) -> torch.Tensor:
+    def _get_action_from_normalized_input(
+        self, normalized_input: Dict[str, Any]
+    ) -> torch.Tensor:
         # Set up autocast context if needed
-        with torch.inference_mode(), torch.autocast(device_type="cuda", dtype=COMPUTE_DTYPE):
+        with (
+            torch.inference_mode(),
+            torch.autocast(device_type="cuda", dtype=COMPUTE_DTYPE),
+        ):
             model_pred = self.model.get_action(normalized_input)
 
         normalized_action = model_pred["action_pred"].float()
         return normalized_action
 
-    def _get_unnormalized_action(self, normalized_action: torch.Tensor) -> Dict[str, Any]:
+    def _get_unnormalized_action(
+        self, normalized_action: torch.Tensor
+    ) -> Dict[str, Any]:
         return self.unapply_transforms({"action": normalized_action.cpu()})
 
     def get_modality_config(self) -> Dict[str, ModalityConfig]:
@@ -263,7 +270,9 @@ class Gr00tPolicy(BasePolicy):
             new_action_head = FlowmatchingActionHead(new_action_head_config)
 
             # Copy the weights from the old action head to the new one
-            new_action_head.load_state_dict(model.action_head.state_dict(), strict=False)
+            new_action_head.load_state_dict(
+                model.action_head.state_dict(), strict=False
+            )
 
             # Replace the action head
             model.action_head = new_action_head
@@ -299,12 +308,16 @@ class Gr00tPolicy(BasePolicy):
         """Load the horizons needed for the model."""
         # Get modality configs
         # Video horizons
-        self._video_delta_indices = np.array(self._modality_config["video"].delta_indices)
+        self._video_delta_indices = np.array(
+            self._modality_config["video"].delta_indices
+        )
         self._assert_delta_indices(self._video_delta_indices)
         self._video_horizon = len(self._video_delta_indices)
         # State horizons (if used)
         if "state" in self._modality_config:
-            self._state_delta_indices = np.array(self._modality_config["state"].delta_indices)
+            self._state_delta_indices = np.array(
+                self._modality_config["state"].delta_indices
+            )
             self._assert_delta_indices(self._state_delta_indices)
             self._state_horizon = len(self._state_delta_indices)
         else:
@@ -346,6 +359,7 @@ def unsqueeze_dict_values(data: Dict[str, Any]) -> Dict[str, Any]:
         else:
             unsqueezed_data[k] = v
     return unsqueezed_data
+
 
 def squeeze_dict_values(data: Dict[str, Any]) -> Dict[str, Any]:
     """

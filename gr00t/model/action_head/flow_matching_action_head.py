@@ -63,9 +63,15 @@ class MultiEmbodimentActionEncoder(nn.Module):
         self.num_embodiments = num_embodiments
 
         # W1: R^{w x d}, W2: R^{w x 2w}, W3: R^{w x w}
-        self.W1 = CategorySpecificLinear(num_embodiments, action_dim, hidden_size)  # (d -> w)
-        self.W2 = CategorySpecificLinear(num_embodiments, 2 * hidden_size, hidden_size)  # (2w -> w)
-        self.W3 = CategorySpecificLinear(num_embodiments, hidden_size, hidden_size)  # (w -> w)
+        self.W1 = CategorySpecificLinear(
+            num_embodiments, action_dim, hidden_size
+        )  # (d -> w)
+        self.W2 = CategorySpecificLinear(
+            num_embodiments, 2 * hidden_size, hidden_size
+        )  # (2w -> w)
+        self.W3 = CategorySpecificLinear(
+            num_embodiments, hidden_size, hidden_size
+        )  # (w -> w)
         self.pos_encoding = SinusoidalPositionalEncoding(hidden_size)
 
     def forward(self, actions, timesteps, cat_ids):
@@ -121,7 +127,9 @@ class FlowmatchingActionHeadConfig(PretrainedConfig):
         default=1536, metadata={"help": "Backbone embedding channel dimension."}
     )
 
-    hidden_size: int = field(default=1024, metadata={"help": "Input embedding dimension."})
+    hidden_size: int = field(
+        default=1024, metadata={"help": "Input embedding dimension."}
+    )
     max_seq_len: int = field(default=1024, metadata={"help": "Maxium Sequence Length"})
     action_dim: int = field(default=None, metadata={"help": "Action dimension."})
     action_horizon: int = field(default=None, metadata={"help": "Action horizon."})
@@ -137,15 +145,21 @@ class FlowmatchingActionHeadConfig(PretrainedConfig):
         default=None,
         metadata={"help": "Number of inference steps for noise diffusion."},
     )
-    max_num_embodiments: int = field(default=32, metadata={"help": "Number of embodiments."})
-    tune_projector: bool = field(default=True, metadata={"help": "Whether to tune the projector."})
+    max_num_embodiments: int = field(
+        default=32, metadata={"help": "Number of embodiments."}
+    )
+    tune_projector: bool = field(
+        default=True, metadata={"help": "Whether to tune the projector."}
+    )
     tune_diffusion_model: bool = field(
         default=True, metadata={"help": "Whether to tune the diffusion model."}
     )
     load_pretrained_det_decode_layer_path: str = field(
         default=None, metadata={"help": "Path to pretrained detection model."}
     )
-    detection_coeff: float = field(default=1.0, metadata={"help": "Detection coefficient."})
+    detection_coeff: float = field(
+        default=1.0, metadata={"help": "Detection coefficient."}
+    )
 
     freeze_decode_layer: bool = field(default=False)
     expand_batch: int = field(default=None)
@@ -196,11 +210,15 @@ class FlowmatchingActionHead(nn.Module):
             hidden_dim=self.hidden_size,
             output_dim=self.action_dim,
         )
-        self.future_tokens = nn.Embedding(config.num_target_vision_tokens, self.input_embedding_dim)
+        self.future_tokens = nn.Embedding(
+            config.num_target_vision_tokens, self.input_embedding_dim
+        )
         nn.init.normal_(self.future_tokens.weight, mean=0.0, std=0.02)
 
         self.vlln = (
-            nn.LayerNorm(config.backbone_embedding_dim) if config.use_vlln else nn.Identity()
+            nn.LayerNorm(config.backbone_embedding_dim)
+            if config.use_vlln
+            else nn.Identity()
         )
         self.vl_self_attention = (
             SelfAttentionTransformer(**config.vl_self_attention_cfg)
@@ -209,15 +227,21 @@ class FlowmatchingActionHead(nn.Module):
         )
 
         if config.add_pos_embed:
-            self.position_embedding = nn.Embedding(config.max_seq_len, self.input_embedding_dim)
+            self.position_embedding = nn.Embedding(
+                config.max_seq_len, self.input_embedding_dim
+            )
             nn.init.normal_(self.position_embedding.weight, mean=0.0, std=0.02)
 
         self.beta_dist = Beta(config.noise_beta_alpha, config.noise_beta_beta)
         self.num_timestep_buckets = config.num_timestep_buckets
         self.config = config
-        self.set_trainable_parameters(config.tune_projector, config.tune_diffusion_model)
+        self.set_trainable_parameters(
+            config.tune_projector, config.tune_diffusion_model
+        )
 
-    def set_trainable_parameters(self, tune_projector: bool, tune_diffusion_model: bool):
+    def set_trainable_parameters(
+        self, tune_projector: bool, tune_diffusion_model: bool
+    ):
         self.tune_projector = tune_projector
         self.tune_diffusion_model = tune_diffusion_model
         for p in self.parameters():
@@ -270,7 +294,9 @@ class FlowmatchingActionHead(nn.Module):
         backbone_output["backbone_features"] = backbone_features
         return backbone_output
 
-    def forward(self, backbone_output: BatchFeature, action_input: BatchFeature) -> BatchFeature:
+    def forward(
+        self, backbone_output: BatchFeature, action_input: BatchFeature
+    ) -> BatchFeature:
         # Set frozen modules to eval
         self.set_frozen_modules_to_eval_mode()
 
@@ -308,7 +334,9 @@ class FlowmatchingActionHead(nn.Module):
         # Embed noised action trajectory.
         actions = action_input.action
         noise = torch.randn(actions.shape, device=actions.device, dtype=actions.dtype)
-        t = self.sample_time(actions.shape[0], device=actions.device, dtype=actions.dtype)
+        t = self.sample_time(
+            actions.shape[0], device=actions.device, dtype=actions.dtype
+        )
         t = t[:, None, None]  # shape (B,1,1) for broadcast
 
         noisy_trajectory = (1 - t) * noise + t * actions
@@ -316,16 +344,22 @@ class FlowmatchingActionHead(nn.Module):
 
         # Convert (continuous) t -> discrete if needed
         t_discretized = (t[:, 0, 0] * self.num_timestep_buckets).long()
-        action_features = self.action_encoder(noisy_trajectory, t_discretized, embodiment_id)
+        action_features = self.action_encoder(
+            noisy_trajectory, t_discretized, embodiment_id
+        )
 
         # Maybe add position embedding.
         if self.config.add_pos_embed:
-            pos_ids = torch.arange(action_features.shape[1], dtype=torch.long, device=device)
+            pos_ids = torch.arange(
+                action_features.shape[1], dtype=torch.long, device=device
+            )
             pos_embs = self.position_embedding(pos_ids).unsqueeze(0)
             action_features = action_features + pos_embs
 
         # Join vision, language, state and action embedding along sequence dimension.
-        future_tokens = self.future_tokens.weight.unsqueeze(0).expand(vl_embs.shape[0], -1, -1)
+        future_tokens = self.future_tokens.weight.unsqueeze(0).expand(
+            vl_embs.shape[0], -1, -1
+        )
         sa_embs = torch.cat((state_features, future_tokens, action_features), dim=1)
 
         vl_attn_mask = backbone_output.backbone_attention_mask
@@ -350,7 +384,9 @@ class FlowmatchingActionHead(nn.Module):
         return BatchFeature(data=output_dict)
 
     @torch.no_grad()
-    def get_action(self, backbone_output: BatchFeature, action_input: BatchFeature) -> BatchFeature:
+    def get_action(
+        self, backbone_output: BatchFeature, action_input: BatchFeature
+    ) -> BatchFeature:
 
         backbone_output = self.process_backbone_output(backbone_output)
 
@@ -382,15 +418,21 @@ class FlowmatchingActionHead(nn.Module):
             timesteps_tensor = torch.full(
                 size=(batch_size,), fill_value=t_discretized, device=device
             )
-            action_features = self.action_encoder(actions, timesteps_tensor, embodiment_id)
+            action_features = self.action_encoder(
+                actions, timesteps_tensor, embodiment_id
+            )
             # Maybe add position embedding.
             if self.config.add_pos_embed:
-                pos_ids = torch.arange(action_features.shape[1], dtype=torch.long, device=device)
+                pos_ids = torch.arange(
+                    action_features.shape[1], dtype=torch.long, device=device
+                )
                 pos_embs = self.position_embedding(pos_ids).unsqueeze(0)
                 action_features = action_features + pos_embs
 
             # Join vision, language, state and action embedding along sequence dimension.
-            future_tokens = self.future_tokens.weight.unsqueeze(0).expand(vl_embs.shape[0], -1, -1)
+            future_tokens = self.future_tokens.weight.unsqueeze(0).expand(
+                vl_embs.shape[0], -1, -1
+            )
             sa_embs = torch.cat((state_features, future_tokens, action_features), dim=1)
 
             # Run model forward.

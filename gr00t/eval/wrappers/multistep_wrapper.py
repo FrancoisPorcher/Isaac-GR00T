@@ -43,7 +43,9 @@ def repeated_space(space, n, loc=0):
         return result_space
     elif isinstance(space, spaces.Discrete):
         return spaces.MultiDiscrete([[space.n] for _ in range(n)])
-    elif isinstance(space, spaces.Text):  # For language, we don't repeat and only keep the last one
+    elif isinstance(
+        space, spaces.Text
+    ):  # For language, we don't repeat and only keep the last one
         return space
     else:
         raise RuntimeError(f"Unsupported space type {type(space)}")
@@ -126,7 +128,9 @@ class MultiStepWrapper(gym.Wrapper):
         self.done = list()
         self.info = defaultdict(lambda: deque(maxlen=self.max_steps_needed + 1))
 
-    def convert_observation_space(self, observation_space, video_horizon, state_horizon):
+    def convert_observation_space(
+        self, observation_space, video_horizon, state_horizon
+    ):
         """
         For video, the observation space will be (video_horizon,) + original shape
         For state (if not None), the observation space will be (state_horizon,) + original shape
@@ -149,7 +153,9 @@ class MultiStepWrapper(gym.Wrapper):
                 text = observation_space[k]
                 new_observation_space[k] = text
             else:
-                raise ValueError(f"Unknown key: {k}")  # NOTE: We might add "language" in the future
+                raise ValueError(
+                    f"Unknown key: {k}"
+                )  # NOTE: We might add "language" in the future
 
         return spaces.Dict(new_observation_space)
 
@@ -188,7 +194,9 @@ class MultiStepWrapper(gym.Wrapper):
         """Resets the environment using kwargs."""
         obs, info = super().reset(seed=seed, options=options)
 
-        self.obs = deque([obs] * (self.max_steps_needed + 1), maxlen=self.max_steps_needed + 1)
+        self.obs = deque(
+            [obs] * (self.max_steps_needed + 1), maxlen=self.max_steps_needed + 1
+        )
         self.reward = list()
         self.done = list()
         self.info = defaultdict(lambda: deque(maxlen=self.max_steps_needed + 1))
@@ -277,7 +285,9 @@ class MultiStepWrapper(gym.Wrapper):
                     raise ValueError(f"Unknown key: {key}")
             return result
         else:
-            raise RuntimeError(f"Unsupported space type: {type(self.observation_space)=}")
+            raise RuntimeError(
+                f"Unsupported space type: {type(self.observation_space)=}"
+            )
 
     def _add_info(self, info):
         for key, value in info.items():

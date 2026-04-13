@@ -43,7 +43,9 @@ class GR00T_N1_5_Config(PretrainedConfig):
     model_type = "gr00t_n1_5"
     backbone_cfg: dict = field(init=False, metadata={"help": "Backbone configuration."})
 
-    action_head_cfg: dict = field(init=False, metadata={"help": "Action head configuration."})
+    action_head_cfg: dict = field(
+        init=False, metadata={"help": "Action head configuration."}
+    )
 
     action_horizon: int = field(init=False, metadata={"help": "Action horizon."})
 
@@ -175,7 +177,9 @@ class GR00T_N1_5(PreTrainedModel):
         backbone_inputs, action_inputs = self.prepare_input(inputs)
         # Because the behavior of backbones remains the same for training and inference, we can use `forward` for backbones.
         backbone_outputs = self.backbone(backbone_inputs)
-        action_head_outputs = self.action_head.get_action(backbone_outputs, action_inputs)
+        action_head_outputs = self.action_head.get_action(
+            backbone_outputs, action_inputs
+        )
         self.validate_data(action_head_outputs, backbone_outputs, is_training=False)
         return action_head_outputs
 
@@ -192,7 +196,9 @@ class GR00T_N1_5(PreTrainedModel):
                 # Keep original dtype
                 return x.to(self.device)
 
-        backbone_inputs = tree.map_structure(to_device_with_maybe_dtype, backbone_inputs)
+        backbone_inputs = tree.map_structure(
+            to_device_with_maybe_dtype, backbone_inputs
+        )
         action_inputs = tree.map_structure(to_device_with_maybe_dtype, action_inputs)
         return backbone_inputs, action_inputs
 
@@ -213,7 +219,9 @@ class GR00T_N1_5(PreTrainedModel):
         try:
             # NOTE(YL) This downloads the model to the local cache and returns the local path to the model
             # saved in ~/.cache/huggingface/hub/
-            local_model_path = snapshot_download(pretrained_model_name_or_path, repo_type="model")
+            local_model_path = snapshot_download(
+                pretrained_model_name_or_path, repo_type="model"
+            )
             # HFValidationError, RepositoryNotFoundError
         except (HFValidationError, RepositoryNotFoundError):
             print(

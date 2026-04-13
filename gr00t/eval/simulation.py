@@ -111,7 +111,10 @@ class SimulationInferenceClient(BaseInferenceClient, BasePolicy):
     def setup_environment(self, config: SimulationConfig) -> gym.vector.VectorEnv:
         """Set up the simulation environment based on the provided configuration."""
         # Create environment functions for each parallel environment
-        env_fns = [partial(_create_single_env, config=config, idx=i) for i in range(config.n_envs)]
+        env_fns = [
+            partial(_create_single_env, config=config, idx=i)
+            for i in range(config.n_envs)
+        ]
         # Create vector environment (sync for single env, async for multiple)
         if config.n_envs == 1:
             return gym.vector.SyncVectorEnv(env_fns)
@@ -144,7 +147,9 @@ class SimulationInferenceClient(BaseInferenceClient, BasePolicy):
             # Process observations and get actions from the server
             actions = self._get_actions_from_server(obs)
             # Step the environment
-            next_obs, rewards, terminations, truncations, env_infos = self.env.step(actions)
+            next_obs, rewards, terminations, truncations, env_infos = self.env.step(
+                actions
+            )
             # Update episode tracking
             for env_idx in range(config.n_envs):
                 current_successes[env_idx] |= bool(env_infos["success"][env_idx][0])
@@ -155,7 +160,9 @@ class SimulationInferenceClient(BaseInferenceClient, BasePolicy):
                     episode_lengths.append(current_lengths[env_idx])
                     episode_successes.append(current_successes[env_idx])
                     cumulative_sr = float(np.mean(episode_successes))
-                    print(f"EP {len(episode_successes)} success: {current_successes[env_idx]}; Cumulative success rate: {cumulative_sr}")
+                    print(
+                        f"EP {len(episode_successes)} success: {current_successes[env_idx]}; Cumulative success rate: {cumulative_sr}"
+                    )
                     current_successes[env_idx] = False
                     completed_episodes += 1
                     # Reset trackers for this environment
@@ -169,9 +176,9 @@ class SimulationInferenceClient(BaseInferenceClient, BasePolicy):
         print(
             f"Collecting {config.n_episodes} episodes took {time.time() - start_time:.2f} seconds"
         )
-        assert (
-            len(episode_successes) >= config.n_episodes
-        ), f"Expected at least {config.n_episodes} episodes, got {len(episode_successes)}"
+        assert len(episode_successes) >= config.n_episodes, (
+            f"Expected at least {config.n_episodes} episodes, got {len(episode_successes)}"
+        )
         return config.env_name, episode_successes
 
     def _get_actions_from_server(self, observations: Dict[str, Any]) -> Dict[str, Any]:

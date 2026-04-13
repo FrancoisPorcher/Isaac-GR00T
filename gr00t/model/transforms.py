@@ -93,15 +93,17 @@ class DefaultDataCollator(DataCollatorMixin):
 
 
 class GR00TTransform(InvertibleModalityTransform):
-
     # -- We inherit from ModalityTransform, so we keep apply_to as well --
     apply_to: list[str] = Field(
-        default_factory=list, description="Not used in this transform, kept for compatibility."
+        default_factory=list,
+        description="Not used in this transform, kept for compatibility.",
     )
     training: bool = Field(
         default=True, description="Whether to apply the transform in training mode."
     )
-    formalize_language: bool = Field(default=False, description="Formalize language if True.")
+    formalize_language: bool = Field(
+        default=False, description="Formalize language if True."
+    )
     embodiment_tag_mapping: dict[str, int] = Field(
         description="The projector index of each embodiment tag.",
         default=EMBODIMENT_TAG_MAPPING,
@@ -114,7 +116,9 @@ class GR00TTransform(InvertibleModalityTransform):
     # Private attributes to keep track of shapes/dimensions across apply/unapply
     _language_key: Optional[list[str]] = PrivateAttr(default=None)
 
-    eagle_processor: ProcessorMixin = Field(default=build_eagle_processor(DEFAULT_EAGLE_PATH))
+    eagle_processor: ProcessorMixin = Field(
+        default=build_eagle_processor(DEFAULT_EAGLE_PATH)
+    )
 
     # XEmbDiT arguments
     default_instruction: str = Field(default="Perform the default behavior.")
@@ -133,9 +137,9 @@ class GR00TTransform(InvertibleModalityTransform):
 
     def get_embodiment_tag(self) -> int:
         """Get the embodiment tag from the data."""
-        assert (
-            self.embodiment_tag is not None
-        ), "Embodiment tag not set. Please call set_metadata first."
+        assert self.embodiment_tag is not None, (
+            "Embodiment tag not set. Please call set_metadata first."
+        )
         return self.embodiment_tag_mapping[self.embodiment_tag.value]
 
     def check_keys_and_batch_size(self, data):
@@ -203,7 +207,9 @@ class GR00TTransform(InvertibleModalityTransform):
                 eagle_conversation, tokenize=False, add_generation_prompt=True
             )
         ]
-        image_inputs, video_inputs = self.eagle_processor.process_vision_info(eagle_conversation)
+        image_inputs, video_inputs = self.eagle_processor.process_vision_info(
+            eagle_conversation
+        )
         eagle_content = {
             "image_inputs": image_inputs,
             "video_inputs": video_inputs,
@@ -249,7 +255,9 @@ class GR00TTransform(InvertibleModalityTransform):
             return state, state_mask, n_state_tokens
 
         state = data["state"]
-        assert state.shape[0] == self.state_horizon, f"{state.shape=}, {self.state_horizon=}"
+        assert state.shape[0] == self.state_horizon, (
+            f"{state.shape=}, {self.state_horizon=}"
+        )
 
         n_state_dims = state.shape[-1]
 
@@ -259,7 +267,9 @@ class GR00TTransform(InvertibleModalityTransform):
             n_state_dims = self.max_state_dim
         else:
             # Pad up to max_state_dim if smaller
-            state = np.pad(state, ((0, 0), (0, self.max_state_dim - n_state_dims)), "constant")
+            state = np.pad(
+                state, ((0, 0), (0, self.max_state_dim - n_state_dims)), "constant"
+            )
 
         # Create mask for real state dims
         state_mask = np.zeros_like(state).astype(bool)
@@ -275,22 +285,28 @@ class GR00TTransform(InvertibleModalityTransform):
         """
         if "action" not in data:
             actions = np.zeros((self.action_horizon, self.max_action_dim))
-            actions_mask = np.zeros((self.action_horizon, self.max_action_dim), dtype=bool)
+            actions_mask = np.zeros(
+                (self.action_horizon, self.max_action_dim), dtype=bool
+            )
             n_action_tokens = self.action_horizon
             return actions, actions_mask, n_action_tokens
 
         actions = data["action"]
-        assert actions.shape[0] == self.action_horizon, f"{actions.shape=}, {self.action_horizon=}"
+        assert actions.shape[0] == self.action_horizon, (
+            f"{actions.shape=}, {self.action_horizon=}"
+        )
 
         n_action_tokens = actions.shape[0]  # T
         n_action_dims = actions.shape[1]
 
-        assert (
-            n_action_dims <= self.max_action_dim
-        ), f"Action dim {n_action_dims} exceeds max allowed {self.max_action_dim}."
+        assert n_action_dims <= self.max_action_dim, (
+            f"Action dim {n_action_dims} exceeds max allowed {self.max_action_dim}."
+        )
 
         # Pad the channel dimension
-        actions = np.pad(actions, ((0, 0), (0, self.max_action_dim - n_action_dims)), "constant")
+        actions = np.pad(
+            actions, ((0, 0), (0, self.max_action_dim - n_action_dims)), "constant"
+        )
 
         # Create mask: [T, max_action_dim]
         actions_mask = np.zeros((n_action_tokens, self.max_action_dim), dtype=bool)
@@ -323,7 +339,9 @@ class GR00TTransform(InvertibleModalityTransform):
             transformed_data["action_mask"] = actions_mask
 
         for k, v in vlm_outputs.items():
-            assert k not in transformed_data, f"Key {k} already exists in transformed_data."
+            assert k not in transformed_data, (
+                f"Key {k} already exists in transformed_data."
+            )
             transformed_data[k] = v
 
         transformed_data["embodiment_id"] = self.get_embodiment_tag()
@@ -333,13 +351,17 @@ class GR00TTransform(InvertibleModalityTransform):
             assert all(
                 transformed_data[key].shape == transformed_data["action"].shape
                 for key in action_and_mask_keys
-            ), f"Shape mismatch: {[(key, transformed_data[key].shape) for key in action_and_mask_keys]}"
+            ), (
+                f"Shape mismatch: {[(key, transformed_data[key].shape) for key in action_and_mask_keys]}"
+            )
 
         return transformed_data
 
     def apply_batch(self, data: dict, batch_size: int) -> dict:
         # Split on batch dimension.
-        data_split = [tree.map_structure(lambda x: x[i], data) for i in range(batch_size)]
+        data_split = [
+            tree.map_structure(lambda x: x[i], data) for i in range(batch_size)
+        ]
         # Process each element.
         data_split_processed = [self.apply_single(elem) for elem in data_split]
         return collate(data_split_processed, self.eagle_processor)

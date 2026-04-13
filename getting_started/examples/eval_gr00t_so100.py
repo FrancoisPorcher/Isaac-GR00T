@@ -50,7 +50,9 @@ class SO100Robot:
         if not enable_camera:
             self.config.cameras = {}
         else:
-            self.config.cameras = {"webcam": OpenCVCameraConfig(cam_idx, 30, 640, 480, "bgr")}
+            self.config.cameras = {
+                "webcam": OpenCVCameraConfig(cam_idx, 30, 640, 480, "bgr")
+            }
         self.config.leader_arms = {}
 
         # remove the .cache/calibration/so100 folder
@@ -58,7 +60,9 @@ class SO100Robot:
             import os
             import shutil
 
-            calibration_folder = os.path.join(os.getcwd(), ".cache", "calibration", "so100")
+            calibration_folder = os.path.join(
+                os.getcwd(), ".cache", "calibration", "so100"
+            )
             print("========> Deleting calibration_folder:", calibration_folder)
             if os.path.exists(calibration_folder):
                 shutil.rmtree(calibration_folder)
@@ -134,7 +138,9 @@ class SO100Robot:
     def go_home(self):
         # [ 88.0664, 156.7090, 135.6152,  83.7598, -89.1211,  16.5107]
         print("-------------------------------- moving to home pose")
-        home_state = torch.tensor([88.0664, 156.7090, 135.6152, 83.7598, -89.1211, 16.5107])
+        home_state = torch.tensor(
+            [88.0664, 156.7090, 135.6152, 83.7598, -89.1211, 16.5107]
+        )
         self.set_target_state(home_state)
         time.sleep(2)
 
@@ -197,7 +203,9 @@ class Gr00tRobotInferenceClient:
 
     def sample_action(self):
         obs_dict = {
-            "video.webcam": np.zeros((1, self.img_size[0], self.img_size[1], 3), dtype=np.uint8),
+            "video.webcam": np.zeros(
+                (1, self.img_size[0], self.img_size[1], 3), dtype=np.uint8
+            ),
             "state.single_arm": np.zeros((1, 5)),
             "state.gripper": np.zeros((1, 1)),
             "annotation.human.action.task_description": [self.language_instruction],
@@ -243,7 +251,9 @@ if __name__ == "__main__":
     parser.add_argument("--actions_to_execute", type=int, default=350)
     parser.add_argument("--cam_idx", type=int, default=1)
     parser.add_argument(
-        "--lang_instruction", type=str, default="Pick up the fruits and place them on the plate."
+        "--lang_instruction",
+        type=str,
+        default="Pick up the fruits and place them on the plate.",
     )
     parser.add_argument("--record_imgs", action="store_true")
     args = parser.parse_args()
@@ -281,7 +291,10 @@ if __name__ == "__main__":
                 start_time = time.time()
                 for i in range(ACTION_HORIZON):
                     concat_action = np.concatenate(
-                        [np.atleast_1d(action[f"action.{key}"][i]) for key in MODALITY_KEYS],
+                        [
+                            np.atleast_1d(action[f"action.{key}"][i])
+                            for key in MODALITY_KEYS
+                        ],
                         axis=0,
                     )
                     assert concat_action.shape == (6,), concat_action.shape
@@ -294,7 +307,9 @@ if __name__ == "__main__":
 
                     if args.record_imgs:
                         # resize the image to 320x240
-                        img = cv2.resize(cv2.cvtColor(img, cv2.COLOR_RGB2BGR), (320, 240))
+                        img = cv2.resize(
+                            cv2.cvtColor(img, cv2.COLOR_RGB2BGR), (320, 240)
+                        )
                         cv2.imwrite(f"eval_images/img_{image_count}.jpg", img)
                         image_count += 1
 

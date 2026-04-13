@@ -58,9 +58,9 @@ def compare_predictions(pred_tensorrt, pred_torch):
         torch_tensor = torch.from_numpy(torch_array).to(torch.float32)
 
         # Ensure tensor shapes are the same
-        assert (
-            tensorrt_tensor.shape == torch_tensor.shape
-        ), f"{key} shapes do not match: {tensorrt_tensor.shape} vs {torch_tensor.shape}"
+        assert tensorrt_tensor.shape == torch_tensor.shape, (
+            f"{key} shapes do not match: {tensorrt_tensor.shape} vs {torch_tensor.shape}"
+        )
 
         # Calculate cosine similarity
         flat_tensorrt = tensorrt_tensor.flatten()
@@ -76,25 +76,30 @@ def compare_predictions(pred_tensorrt, pred_torch):
         l1_dist = torch.abs(flat_tensorrt - flat_torch)
 
         print(f"\n{key}:")
-        print(f'{"Cosine Similarity (PyTorch/TensorRT):".ljust(max_label_width)} {cos_sim.item()}')
         print(
-            f'{"L1 Mean/Max Distance (PyTorch/TensorRT):".ljust(max_label_width)} {l1_dist.mean().item():.4f}/{l1_dist.max().item():.4f}'
+            f"{'Cosine Similarity (PyTorch/TensorRT):'.ljust(max_label_width)} {cos_sim.item()}"
         )
         print(
-            f'{"Max Output Values (PyTorch/TensorRT):".ljust(max_label_width)} {torch_tensor.max().item():.4f}/{tensorrt_tensor.max().item():.4f}'
+            f"{'L1 Mean/Max Distance (PyTorch/TensorRT):'.ljust(max_label_width)} {l1_dist.mean().item():.4f}/{l1_dist.max().item():.4f}"
         )
         print(
-            f'{"Mean Output Values (PyTorch/TensorRT):".ljust(max_label_width)} {torch_tensor.mean().item():.4f}/{tensorrt_tensor.mean().item():.4f}'
+            f"{'Max Output Values (PyTorch/TensorRT):'.ljust(max_label_width)} {torch_tensor.max().item():.4f}/{tensorrt_tensor.max().item():.4f}"
         )
         print(
-            f'{"Min Output Values (PyTorch/TensorRT):".ljust(max_label_width)} {torch_tensor.min().item():.4f}/{tensorrt_tensor.min().item():.4f}'
+            f"{'Mean Output Values (PyTorch/TensorRT):'.ljust(max_label_width)} {torch_tensor.mean().item():.4f}/{tensorrt_tensor.mean().item():.4f}"
+        )
+        print(
+            f"{'Min Output Values (PyTorch/TensorRT):'.ljust(max_label_width)} {torch_tensor.min().item():.4f}/{tensorrt_tensor.min().item():.4f}"
         )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run GR00T inference")
     parser.add_argument(
-        "--model_path", type=str, default="nvidia/GR00T-N1.5-3B", help="Path to the GR00T model"
+        "--model_path",
+        type=str,
+        default="nvidia/GR00T-N1.5-3B",
+        help="Path to the GR00T model",
     )
     parser.add_argument(
         "--inference_mode",
@@ -168,7 +173,11 @@ if __name__ == "__main__":
         # ensure PyTorch and TensorRT have the same init_actions
         if not hasattr(policy.model.action_head, "init_actions"):
             policy.model.action_head.init_actions = torch.randn(
-                (1, policy.model.action_head.action_horizon, policy.model.action_head.action_dim),
+                (
+                    1,
+                    policy.model.action_head.action_horizon,
+                    policy.model.action_head.action_dim,
+                ),
                 dtype=torch.float16,
                 device=device,
             )

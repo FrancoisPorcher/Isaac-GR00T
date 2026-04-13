@@ -15,14 +15,16 @@
 
 
 import os
+
 os.environ["TRANSFORMERS_VIDEO_BACKEND"] = "av"
 
 import warnings
+
 warnings.filterwarnings(
     "ignore",
     message="The video decoding and encoding capabilities of torchvision are deprecated",
     category=UserWarning,
-    module="torchvision.io._video_deprecation_warning"
+    module="torchvision.io._video_deprecation_warning",
 )
 
 import copy
@@ -47,7 +49,6 @@ from gr00t.experiment.runner import TrainRunner
 from gr00t.model.gr00t_n1 import GR00T_N1_5
 from gr00t.model.transforms import EMBODIMENT_TAG_MAPPING
 from gr00t.utils.peft import get_lora_model
-
 
 
 @dataclass
@@ -103,7 +104,9 @@ class ArgsConfig:
     weight_decay: float = 1e-5
     """Weight decay for AdamW optimizer."""
 
-    warmup_ratio: float = 0.05 # it was 0.05 originally, then switched to 0.01, then back to 0.05
+    warmup_ratio: float = (
+        0.05  # it was 0.05 originally, then switched to 0.01, then back to 0.05
+    )
     """Ratio of total training steps used for warmup."""
 
     lora_rank: int = 0
@@ -192,11 +195,16 @@ def main(config: ArgsConfig):
             )
             single_datasets.append(dataset)
 
-        ds_weights = np.array([np.power(len(dataset), config.ds_weights_alpha) for dataset in single_datasets])
+        ds_weights = np.array(
+            [
+                np.power(len(dataset), config.ds_weights_alpha)
+                for dataset in single_datasets
+            ]
+        )
         # the groot dataloader requires that at least one dataset has weight 1.0
         ds_weights = ds_weights / ds_weights[0]
         print("dataset weights:", ds_weights)
-        
+
         train_dataset = LeRobotMixtureDataset(
             data_mixture=[
                 (dataset, ds_w)  # we will use equal weights for all datasets
@@ -257,7 +265,8 @@ def main(config: ArgsConfig):
 
         # Set trainable parameters for the new action head
         model.action_head.set_trainable_parameters(
-            tune_projector=config.tune_projector, tune_diffusion_model=config.tune_diffusion_model
+            tune_projector=config.tune_projector,
+            tune_diffusion_model=config.tune_diffusion_model,
         )
 
     # Set the model's compute_dtype to bfloat16
@@ -337,9 +346,9 @@ if __name__ == "__main__":
     available_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 1
 
     # Validate GPU configuration
-    assert (
-        config.num_gpus <= available_gpus
-    ), f"Number of GPUs requested ({config.num_gpus}) is greater than the available GPUs ({available_gpus})"
+    assert config.num_gpus <= available_gpus, (
+        f"Number of GPUs requested ({config.num_gpus}) is greater than the available GPUs ({available_gpus})"
+    )
     assert config.num_gpus > 0, "Number of GPUs must be greater than 0"
     print(f"Using {config.num_gpus} GPUs")
 

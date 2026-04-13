@@ -154,18 +154,20 @@ class TicTacToeVLMClient:
     #########################################################################
 
     def _get_prompt(self):
-        member_names = [member.name for member in TaskToString]  # Use name instead of value
+        member_names = [
+            member.name for member in TaskToString
+        ]  # Use name instead of value
         member_names = [name.replace("_", " ") for name in member_names]
         prompt = "The image shows a robotic setup for playing tic-tac-toe. "
         prompt += "There's a 3x3 grid representing a tic-tac-toe board with some positions already filled. "
         prompt += "Orange circles represent 'O' and blue 'X' pieces represent 'X'. "
         prompt += "You are playing as 'O' (the orange circles). "
         prompt += "Based on the current board state, what is your best next move to win or block your opponent? "
-        prompt += f"Please choose one of the following positions: {', '.join(member_names)}. "
-        prompt += "Only choose an empty position that is not currently occupied by 'X' or 'O'. "
         prompt += (
-            "Only respond with the position name (e.g., 'CENTER', 'TOP RIGHT', 'BOTTOM LEFT')."
+            f"Please choose one of the following positions: {', '.join(member_names)}. "
         )
+        prompt += "Only choose an empty position that is not currently occupied by 'X' or 'O'. "
+        prompt += "Only respond with the position name (e.g., 'CENTER', 'TOP RIGHT', 'BOTTOM LEFT')."
         return prompt
 
     def _gemini_generate(self, image_pth: str, max_retries=3):
@@ -203,7 +205,9 @@ class TicTacToeVLMClient:
                     response += chunk.text
                 return response
             except Exception as e:
-                print_yellow(f"Gemini API error (attempt {retry+1}/{max_retries}): {e}")
+                print_yellow(
+                    f"Gemini API error (attempt {retry + 1}/{max_retries}): {e}"
+                )
                 if retry < max_retries - 1:
                     print_yellow("Retrying in 2 seconds...")
                     time.sleep(2)
@@ -214,7 +218,9 @@ class TicTacToeVLMClient:
     def _openai_generate(self, img: np.ndarray) -> str:
         """This calls the openai client to generate the prompt"""
         # Convert numpy array to JPEG bytes
-        success, encoded_img = cv2.imencode(".jpg", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        success, encoded_img = cv2.imencode(
+            ".jpg", cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        )
         if not success:
             raise ValueError("Could not encode image")
 
@@ -247,7 +253,9 @@ class TicTacToeVLMClient:
         # replace space with underscore
         response = response.replace(" ", "_")
         # do a strip, remove all punctuations, and make sure it is uppercase
-        selection = response.strip().replace("\n", "").replace(".", "").replace(",", "").upper()
+        selection = (
+            response.strip().replace("\n", "").replace(".", "").replace(",", "").upper()
+        )
         return selection
 
     def _get_closest_task(self, response: str) -> str:
@@ -294,7 +302,6 @@ def print_yellow(text):
 
 
 if __name__ == "__main__":
-
     current_task = random.choice(list(TaskToString))
     print_green(f"task: {current_task}")
 
@@ -342,7 +349,6 @@ if __name__ == "__main__":
     #####################################################################
 
     with robot_instance.activate():
-
         print("--------------------------------")
         print_green(" 🤖 Tic-Tac-Toe Bot is running")
         print("--------------------------------")
@@ -353,7 +359,9 @@ if __name__ == "__main__":
             img = robot_instance.get_current_img()
             print_green(f" 🤖 Robot is thinking........ (aka {vlm_client.name} vlm)")
             prompt = vlm_client.generate_vla_prompt(img)
-            print_green(f" 🤖 Robot decided the move ({vlm_client.name} vlm): \n -> '{prompt}'")
+            print_green(
+                f" 🤖 Robot decided the move ({vlm_client.name} vlm): \n -> '{prompt}'"
+            )
             print_green(" 🦾 GR00T VLA is executing the move")
             client_instance.set_lang_instruction(prompt.__str__())
 
@@ -377,7 +385,9 @@ if __name__ == "__main__":
 
                             img = robot_instance.get_current_img()
                             current_task = vlm_client.generate_vla_prompt(img)
-                            print_green(f" 🤖 Robot decided the move: \n -> '{current_task}'")
+                            print_green(
+                                f" 🤖 Robot decided the move: \n -> '{current_task}'"
+                            )
 
                         else:
                             current_task = random.choice(list(TaskToString))
@@ -413,7 +423,10 @@ if __name__ == "__main__":
                             break
 
                         concat_action = np.concatenate(
-                            [np.atleast_1d(action[f"action.{key}"][j]) for key in MODALITY_KEYS],
+                            [
+                                np.atleast_1d(action[f"action.{key}"][j])
+                                for key in MODALITY_KEYS
+                            ],
                             axis=0,
                         )
                         assert concat_action.shape == (6,), concat_action.shape

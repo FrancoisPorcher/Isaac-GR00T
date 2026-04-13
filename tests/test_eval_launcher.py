@@ -36,7 +36,9 @@ class TestPartitionTasks:
         for i, p1 in enumerate(partitions):
             for j, p2 in enumerate(partitions):
                 if i != j:
-                    assert set(p1).isdisjoint(set(p2)), f"Partitions {i} and {j} overlap: {set(p1) & set(p2)}"
+                    assert set(p1).isdisjoint(set(p2)), (
+                        f"Partitions {i} and {j} overlap: {set(p1) & set(p2)}"
+                    )
 
     def test_partition_full_coverage(self, all_tasks):
         partitions = partition_tasks(all_tasks, 8)

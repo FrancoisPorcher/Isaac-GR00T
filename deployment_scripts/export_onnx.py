@@ -65,7 +65,9 @@ def export_eagle2_vit(vision_model, output_dir):
             embeddings = patch_embeds.flatten(2).transpose(1, 2)
 
             if interpolate_pos_encoding:
-                embeddings = embeddings + self.interpolate_pos_encoding(embeddings, height, width)
+                embeddings = embeddings + self.interpolate_pos_encoding(
+                    embeddings, height, width
+                )
             else:
                 embeddings = embeddings + self.position_embedding(position_ids)
             return embeddings
@@ -117,11 +119,18 @@ def export_eagle2_vit(vision_model, output_dir):
     model.eval().cuda()
 
     pixel_values = torch.randn(
-        (1, model.config.num_channels, model.config.image_size, model.config.image_size),
+        (
+            1,
+            model.config.num_channels,
+            model.config.image_size,
+            model.config.image_size,
+        ),
         dtype=torch.float16,
         device="cuda",
     )
-    position_ids = torch.arange(model.embeddings.num_patches, device="cuda").expand((1, -1))
+    position_ids = torch.arange(model.embeddings.num_patches, device="cuda").expand(
+        (1, -1)
+    )
 
     os.makedirs(output_dir, exist_ok=True)
     with torch.inference_mode():
@@ -129,7 +138,10 @@ def export_eagle2_vit(vision_model, output_dir):
             model,
             (pixel_values, position_ids),  # Include position_ids in ONNX export
             f"{output_dir}/eagle2/vit.onnx",
-            input_names=["pixel_values", "position_ids"],  # Add position_ids to input names
+            input_names=[
+                "pixel_values",
+                "position_ids",
+            ],  # Add position_ids to input names
             output_names=["vit_embeds"],
             opset_version=19,
             do_constant_folding=True,
@@ -147,14 +159,19 @@ def export_eagle2_llm(backbone_model, backbone_config, output_dir, attention_mas
             super().__init__(**kwargs)
 
             # Modify LlamamModel architecture for ONNX export
-            config = AutoConfig.from_pretrained(DEFAULT_EAGLE_PATH, trust_remote_code=True)
+            config = AutoConfig.from_pretrained(
+                DEFAULT_EAGLE_PATH, trust_remote_code=True
+            )
             config._attn_implementation = "eager"  # not use flash attention
 
             assert config.text_config.architectures[0] == "Qwen3ForCausalLM"
             self.eagle_model.language_model = Qwen3ForCausalLM(config.text_config)
 
             # # remove parts of the LLM
-            while len(self.eagle_model.language_model.model.layers) > kwargs["select_layer"]:
+            while (
+                len(self.eagle_model.language_model.model.layers)
+                > kwargs["select_layer"]
+            ):
                 self.eagle_model.language_model.model.layers.pop(-1)
 
         def forward(self, input_ids, vit_embeds, attention_mask):
@@ -173,7 +190,9 @@ def export_eagle2_llm(backbone_model, backbone_config, output_dir, attention_mas
             else:
                 vit_embeds = self.eagle_model.mlp1(vit_embeds)
 
-            input_embeds = self.eagle_model.language_model.get_input_embeddings()(input_ids)
+            input_embeds = self.eagle_model.language_model.get_input_embeddings()(
+                input_ids
+            )
 
             B, N, C = input_embeds.shape
             input_embeds = input_embeds.reshape(B * N, C)
@@ -207,8 +226,12 @@ def export_eagle2_llm(backbone_model, backbone_config, output_dir, attention_mas
     model.load_state_dict(backbone_model.state_dict())
     model.eval().cuda()
 
-    input_ids = torch.randint(100, (1, attention_mask.shape[1]), dtype=torch.int64).cuda()
-    input_ids[:, : model.eagle_model.num_image_token] = model.eagle_model.image_token_index
+    input_ids = torch.randint(
+        100, (1, attention_mask.shape[1]), dtype=torch.int64
+    ).cuda()
+    input_ids[:, : model.eagle_model.num_image_token] = (
+        model.eagle_model.image_token_index
+    )
     vit_embeds = torch.randn(
         (
             1,
@@ -259,7 +282,11 @@ def export_action_head(policy, ONNX_export_path, input_state, attention_mask):
         .cuda()
     )
     backbone_features = torch.randn(
-        (1, attention_mask.shape[1], policy.model.action_head.config.backbone_embedding_dim),
+        (
+            1,
+            attention_mask.shape[1],
+            policy.model.action_head.config.backbone_embedding_dim,
+        ),
         dtype=torch.float16,
     ).cuda()
 
@@ -338,7 +365,11 @@ def export_action_head(policy, ONNX_export_path, input_state, attention_mask):
         dtype=torch.float16,
     ).cuda()
     vl_embs_tensor = torch.randn(
-        (1, attention_mask.shape[1], policy.model.action_head.config.backbone_embedding_dim),
+        (
+            1,
+            attention_mask.shape[1],
+            policy.model.action_head.config.backbone_embedding_dim,
+        ),
         dtype=torch.float16,
     ).cuda()
 
@@ -425,9 +456,14 @@ def run_groot_inference(
     os.makedirs(os.path.join(onnx_model_path, "eagle2"), exist_ok=True)
     os.makedirs(os.path.join(onnx_model_path, "action_head"), exist_ok=True)
 
-    export_eagle2_vit(policy.model.backbone.eagle_model.vision_model.vision_model, onnx_model_path)
+    export_eagle2_vit(
+        policy.model.backbone.eagle_model.vision_model.vision_model, onnx_model_path
+    )
     export_eagle2_llm(
-        policy.model.backbone, policy.model.config.backbone_cfg, onnx_model_path, attention_mask
+        policy.model.backbone,
+        policy.model.config.backbone_cfg,
+        onnx_model_path,
+        attention_mask,
     )
     export_action_head(policy, onnx_model_path, state, attention_mask)
 

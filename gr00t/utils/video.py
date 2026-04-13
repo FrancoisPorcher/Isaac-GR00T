@@ -16,7 +16,8 @@ import torch  # noqa: F401 # isort: skip
 import torchvision  # noqa: F401 # isort: skip
 import av
 import cv2
-#import decord  # noqa: F401
+
+# import decord  # noqa: F401
 import numpy as np
 
 
@@ -81,7 +82,9 @@ def get_frames_by_timestamps(
         # Calculate timestamps for each frame
         fps = cap.get(cv2.CAP_PROP_FPS)
         frame_ts = np.arange(num_frames) / fps
-        frame_ts = frame_ts[:, np.newaxis]  # Reshape to (num_frames, 1) for broadcasting
+        frame_ts = frame_ts[
+            :, np.newaxis
+        ]  # Reshape to (num_frames, 1) for broadcasting
         # Map each requested timestamp to the closest frame index
         indices = np.abs(frame_ts - timestamps).argmin(axis=0)
         frames = []

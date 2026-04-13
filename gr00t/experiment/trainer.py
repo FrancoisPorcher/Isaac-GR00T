@@ -71,7 +71,9 @@ class DualBrainTrainer(transformers.Trainer):
     def _get_eval_sampler(self, eval_dataset):
         return BaseSampler(eval_dataset, shuffle=False)
 
-    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+    def compute_loss(
+        self, model, inputs, return_outputs=False, num_items_in_batch=None
+    ):
         outputs = model(inputs)
         loss = outputs["loss"]
         return (loss, outputs) if return_outputs else loss
@@ -110,10 +112,12 @@ class DualBrainTrainer(transformers.Trainer):
                 },
             ]
 
-            optimizer_cls, optimizer_kwargs = transformers.Trainer.get_optimizer_cls_and_kwargs(
-                self.args
+            optimizer_cls, optimizer_kwargs = (
+                transformers.Trainer.get_optimizer_cls_and_kwargs(self.args)
             )
-            self.optimizer = optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs)
+            self.optimizer = optimizer_cls(
+                optimizer_grouped_parameters, **optimizer_kwargs
+            )
 
         return self.optimizer
 
@@ -150,4 +154,6 @@ class DualBrainTrainer(transformers.Trainer):
             self.state = TrainerState.load_from_json(
                 os.path.join(resume_from_checkpoint, TRAINER_STATE_NAME)
             )
-        return super().train(resume_from_checkpoint, trial, ignore_keys_for_eval, **kwargs)
+        return super().train(
+            resume_from_checkpoint, trial, ignore_keys_for_eval, **kwargs
+        )

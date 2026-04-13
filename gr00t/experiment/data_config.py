@@ -99,7 +99,9 @@ class FourierGr1ArmsOnlyDataConfig(BaseDataConfig):
             # video transforms
             VideoToTensor(apply_to=self.video_keys),
             VideoCrop(apply_to=self.video_keys, scale=0.95),
-            VideoResize(apply_to=self.video_keys, height=224, width=224, interpolation="linear"),
+            VideoResize(
+                apply_to=self.video_keys, height=224, width=224, interpolation="linear"
+            ),
             VideoColorJitter(
                 apply_to=self.video_keys,
                 brightness=0.3,
@@ -180,7 +182,9 @@ class So100DataConfig(BaseDataConfig):
             # video transforms
             VideoToTensor(apply_to=self.video_keys),
             VideoCrop(apply_to=self.video_keys, scale=0.95),
-            VideoResize(apply_to=self.video_keys, height=224, width=224, interpolation="linear"),
+            VideoResize(
+                apply_to=self.video_keys, height=224, width=224, interpolation="linear"
+            ),
             VideoColorJitter(
                 apply_to=self.video_keys,
                 brightness=0.3,
@@ -235,8 +239,18 @@ class So100DualCamDataConfig(So100DataConfig):
 
 class UnitreeG1DataConfig(BaseDataConfig):
     video_keys = ["video.rs_view"]
-    state_keys = ["state.left_arm", "state.right_arm", "state.left_hand", "state.right_hand"]
-    action_keys = ["action.left_arm", "action.right_arm", "action.left_hand", "action.right_hand"]
+    state_keys = [
+        "state.left_arm",
+        "state.right_arm",
+        "state.left_hand",
+        "state.right_hand",
+    ]
+    action_keys = [
+        "action.left_arm",
+        "action.right_arm",
+        "action.left_hand",
+        "action.right_hand",
+    ]
     language_keys = ["annotation.human.task_description"]
     observation_indices = [0]
     action_indices = list(range(16))
@@ -276,7 +290,9 @@ class UnitreeG1DataConfig(BaseDataConfig):
             # video transforms
             VideoToTensor(apply_to=self.video_keys),
             VideoCrop(apply_to=self.video_keys, scale=0.95),
-            VideoResize(apply_to=self.video_keys, height=224, width=224, interpolation="linear"),
+            VideoResize(
+                apply_to=self.video_keys, height=224, width=224, interpolation="linear"
+            ),
             VideoColorJitter(
                 apply_to=self.video_keys,
                 brightness=0.3,
@@ -325,7 +341,12 @@ class UnitreeG1FullBodyDataConfig(UnitreeG1DataConfig):
         "state.left_hand",
         "state.right_hand",
     ]
-    action_keys = ["action.left_arm", "action.right_arm", "action.left_hand", "action.right_hand"]
+    action_keys = [
+        "action.left_arm",
+        "action.right_arm",
+        "action.left_hand",
+        "action.right_hand",
+    ]
     language_keys = ["annotation.human.task_description"]
     observation_indices = [0]
     action_indices = list(range(16))
@@ -386,7 +407,9 @@ class FourierGr1FullUpperBodyDataConfig(BaseDataConfig):
             # video transforms
             VideoToTensor(apply_to=self.video_keys),
             VideoCrop(apply_to=self.video_keys, scale=0.95),
-            VideoResize(apply_to=self.video_keys, height=224, width=224, interpolation="linear"),
+            VideoResize(
+                apply_to=self.video_keys, height=224, width=224, interpolation="linear"
+            ),
             VideoColorJitter(
                 apply_to=self.video_keys,
                 brightness=0.3,
@@ -500,7 +523,9 @@ class BimanualPandaGripperDataConfig(BaseDataConfig):
             # video transforms
             VideoToTensor(apply_to=self.video_keys),
             VideoCrop(apply_to=self.video_keys, scale=0.95),
-            VideoResize(apply_to=self.video_keys, height=224, width=224, interpolation="linear"),
+            VideoResize(
+                apply_to=self.video_keys, height=224, width=224, interpolation="linear"
+            ),
             VideoColorJitter(
                 apply_to=self.video_keys,
                 brightness=0.3,
@@ -770,7 +795,9 @@ class OxeDroidDataConfig:
             # video transforms
             VideoToTensor(apply_to=self.video_keys),
             VideoCrop(apply_to=self.video_keys, scale=0.95),
-            VideoResize(apply_to=self.video_keys, height=224, width=224, interpolation="linear"),
+            VideoResize(
+                apply_to=self.video_keys, height=224, width=224, interpolation="linear"
+            ),
             VideoColorJitter(
                 apply_to=self.video_keys,
                 brightness=0.3,
@@ -877,7 +904,9 @@ class AgibotGenie1DataConfig:
             # video transforms
             VideoToTensor(apply_to=self.video_keys),
             VideoCrop(apply_to=self.video_keys, scale=0.95),
-            VideoResize(apply_to=self.video_keys, height=224, width=224, interpolation="linear"),
+            VideoResize(
+                apply_to=self.video_keys, height=224, width=224, interpolation="linear"
+            ),
             VideoColorJitter(
                 apply_to=self.video_keys,
                 brightness=0.3,

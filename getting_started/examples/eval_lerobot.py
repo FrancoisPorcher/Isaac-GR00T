@@ -97,9 +97,9 @@ class Gr00tRobotInferenceClient:
         self.camera_keys = camera_keys
         self.robot_state_keys = robot_state_keys
         self.show_images = show_images
-        assert (
-            len(robot_state_keys) == 6
-        ), f"robot_state_keys should be size 6, but got {len(robot_state_keys)} "
+        assert len(robot_state_keys) == 6, (
+            f"robot_state_keys should be size 6, but got {len(robot_state_keys)} "
+        )
         self.modality_keys = ["single_arm", "gripper"]
 
     def get_action(self, observation_dict, lang: str):
@@ -152,12 +152,17 @@ class Gr00tRobotInferenceClient:
         so that we can send it to the robot
         """
         concat_action = np.concatenate(
-            [np.atleast_1d(action_chunk[f"action.{key}"][idx]) for key in self.modality_keys],
+            [
+                np.atleast_1d(action_chunk[f"action.{key}"][idx])
+                for key in self.modality_keys
+            ],
             axis=0,
         )
         assert len(concat_action) == len(self.robot_state_keys), "this should be size 6"
         # convert the action to dict[str, float]
-        action_dict = {key: concat_action[i] for i, key in enumerate(self.robot_state_keys)}
+        action_dict = {
+            key: concat_action[i] for i, key in enumerate(self.robot_state_keys)
+        }
         return action_dict
 
 

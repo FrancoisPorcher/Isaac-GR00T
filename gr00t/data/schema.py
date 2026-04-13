@@ -155,9 +155,9 @@ class LeRobotModalityMetadata(BaseModel):
                 )
             return self.video[subkey]
         elif modality == "annotation":
-            assert (
-                self.annotation is not None
-            ), "Trying to get annotation metadata for a dataset with no annotations"
+            assert self.annotation is not None, (
+                "Trying to get annotation metadata for a dataset with no annotations"
+            )
             if subkey not in self.annotation:
                 raise ValueError(
                     f"Key: {key}, annotation key {subkey} not found in metadata, available annotation keys: {self.annotation.keys()}"
@@ -184,8 +184,12 @@ class DatasetStatisticalValues(BaseModel):
 
 
 class DatasetStatistics(BaseModel):
-    state: dict[str, DatasetStatisticalValues] = Field(..., description="Statistics of the state")
-    action: dict[str, DatasetStatisticalValues] = Field(..., description="Statistics of the action")
+    state: dict[str, DatasetStatisticalValues] = Field(
+        ..., description="Statistics of the state"
+    )
+    action: dict[str, DatasetStatisticalValues] = Field(
+        ..., description="Statistics of the action"
+    )
 
 
 class VideoMetadata(BaseModel):
@@ -198,15 +202,23 @@ class VideoMetadata(BaseModel):
 
 class StateActionMetadata(BaseModel):
     absolute: bool = Field(..., description="Whether the state or action is absolute")
-    rotation_type: Optional[RotationType] = Field(None, description="Type of rotation, if any")
+    rotation_type: Optional[RotationType] = Field(
+        None, description="Type of rotation, if any"
+    )
     shape: tuple[int, ...] = Field(..., description="Shape of the state or action")
-    continuous: bool = Field(..., description="Whether the state or action is continuous")
+    continuous: bool = Field(
+        ..., description="Whether the state or action is continuous"
+    )
 
 
 class DatasetModalities(BaseModel):
     video: dict[str, VideoMetadata] = Field(..., description="Metadata of the video")
-    state: dict[str, StateActionMetadata] = Field(..., description="Metadata of the state")
-    action: dict[str, StateActionMetadata] = Field(..., description="Metadata of the action")
+    state: dict[str, StateActionMetadata] = Field(
+        ..., description="Metadata of the state"
+    )
+    action: dict[str, StateActionMetadata] = Field(
+        ..., description="Metadata of the action"
+    )
 
 
 class DatasetMetadata(BaseModel):
@@ -218,4 +230,6 @@ class DatasetMetadata(BaseModel):
 
     statistics: DatasetStatistics = Field(..., description="Statistics of the dataset")
     modalities: DatasetModalities = Field(..., description="Metadata of the modalities")
-    embodiment_tag: EmbodimentTag = Field(..., description="Embodiment tag of the dataset")
+    embodiment_tag: EmbodimentTag = Field(
+        ..., description="Embodiment tag of the dataset"
+    )

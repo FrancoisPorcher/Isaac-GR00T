@@ -105,7 +105,9 @@ def _example_zmq_client_call(obs: dict, host: str, port: int, api_token: str):
 
     time_start = time.time()
     action = policy_client.get_action(obs)
-    print(f"Total time taken to get action from server: {time.time() - time_start} seconds")
+    print(
+        f"Total time taken to get action from server: {time.time() - time_start} seconds"
+    )
     return action
 
 
@@ -123,7 +125,9 @@ def _example_http_client_call(obs: dict, host: str, port: int, api_token: str):
 
     time_start = time.time()
     response = requests.post(f"http://{host}:{port}/act", json={"observation": obs})
-    print(f"Total time taken to get action from HTTP server: {time.time() - time_start} seconds")
+    print(
+        f"Total time taken to get action from HTTP server: {time.time() - time_start} seconds"
+    )
 
     if response.status_code == 200:
         action = response.json()
@@ -167,7 +171,9 @@ def main(args: ArgsConfig):
             )
             server.run()
         else:
-            server = RobotInferenceServer(policy, port=args.port, api_token=args.api_token)
+            server = RobotInferenceServer(
+                policy, port=args.port, api_token=args.api_token
+            )
             server.run()
 
     # Here is mainly a testing code
@@ -189,7 +195,9 @@ def main(args: ArgsConfig):
         # - action: action.right_hand: (16, 6)
         # - action: action.waist: (16, 3)
         obs = {
-            "video.ego_view": np.random.randint(0, 256, (1, 256, 256, 3), dtype=np.uint8),
+            "video.ego_view": np.random.randint(
+                0, 256, (1, 256, 256, 3), dtype=np.uint8
+            ),
             "state.left_arm": np.random.rand(1, 7),
             "state.right_arm": np.random.rand(1, 7),
             "state.left_hand": np.random.rand(1, 6),
@@ -199,7 +207,9 @@ def main(args: ArgsConfig):
         }
 
         if args.http_server:
-            action = _example_http_client_call(obs, args.host, args.port, args.api_token)
+            action = _example_http_client_call(
+                obs, args.host, args.port, args.api_token
+            )
         else:
             action = _example_zmq_client_call(obs, args.host, args.port, args.api_token)
 

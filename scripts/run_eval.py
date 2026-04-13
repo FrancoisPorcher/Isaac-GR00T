@@ -55,7 +55,17 @@ def run_server(data_config, model_path, embodiment_tag, port):
     server.run()
 
 
-def run_client(host, port, task_set_list, video_dir, split, n_episodes, n_envs, n_action_steps, run_id):
+def run_client(
+    host,
+    port,
+    task_set_list,
+    video_dir,
+    split,
+    n_episodes,
+    n_envs,
+    n_action_steps,
+    run_id,
+):
     # Create a simulation client
     simulation_client = SimulationInferenceClient(host=host, port=port)
 
@@ -83,7 +93,9 @@ def run_client(host, port, task_set_list, video_dir, split, n_episodes, n_envs, 
             split=split,
             n_episodes=n_episodes,
             n_envs=n_envs,
-            video=VideoConfig(video_dir=this_video_dir, env_name=env_name, n_envs=n_envs),
+            video=VideoConfig(
+                video_dir=this_video_dir, env_name=env_name, n_envs=n_envs
+            ),
             multistep=MultiStepConfig(
                 n_action_steps=n_action_steps,
                 max_episode_steps=horizon,
@@ -150,11 +162,21 @@ if __name__ == "__main__":
         choices=["pretrain", "target"],
         required=True,
     )
-    parser.add_argument("--port", type=int, help="Port number for the server.", default=5555)
-    parser.add_argument("--host", type=str, help="Host address for the server.", default="localhost")
-    parser.add_argument("--video_dir", type=str, help="Directory to save videos.", default=None)
-    parser.add_argument("--n_episodes", type=int, help="Number of episodes to run.", default=50)
-    parser.add_argument("--n_envs", type=int, help="Number of parallel environments.", default=5)
+    parser.add_argument(
+        "--port", type=int, help="Port number for the server.", default=5555
+    )
+    parser.add_argument(
+        "--host", type=str, help="Host address for the server.", default="localhost"
+    )
+    parser.add_argument(
+        "--video_dir", type=str, help="Directory to save videos.", default=None
+    )
+    parser.add_argument(
+        "--n_episodes", type=int, help="Number of episodes to run.", default=50
+    )
+    parser.add_argument(
+        "--n_envs", type=int, help="Number of parallel environments.", default=5
+    )
     parser.add_argument(
         "--n_action_steps",
         type=int,

@@ -33,16 +33,22 @@ TASK_GROUP_MAPPING["atomic_no_nav"] = [
 TASK_GROUP_MAPPING["composite_seen"] = TARGET_TASKS["composite_seen"]
 TASK_GROUP_MAPPING["composite_unseen"] = TARGET_TASKS["composite_unseen"]
 TASK_GROUP_MAPPING["lifelong_learning_phase1"] = TARGET_TASKS["atomic_seen"]
-TASK_GROUP_MAPPING["lifelong_learning_phase2"] = LIFELONG_LEARNING_TASKS["lifelong_learning_phase2"]
-TASK_GROUP_MAPPING["lifelong_learning_phase3"] = LIFELONG_LEARNING_TASKS["lifelong_learning_phase3"]
-TASK_GROUP_MAPPING["lifelong_learning_phase4"] = LIFELONG_LEARNING_TASKS["lifelong_learning_phase4"]
+TASK_GROUP_MAPPING["lifelong_learning_phase2"] = LIFELONG_LEARNING_TASKS[
+    "lifelong_learning_phase2"
+]
+TASK_GROUP_MAPPING["lifelong_learning_phase3"] = LIFELONG_LEARNING_TASKS[
+    "lifelong_learning_phase3"
+]
+TASK_GROUP_MAPPING["lifelong_learning_phase4"] = LIFELONG_LEARNING_TASKS[
+    "lifelong_learning_phase4"
+]
 
 
 def compute_stats(
-        checkpoint_path,
-        task_set=["atomic_seen", "composite_seen", "composite_unseen"],
-        verbose=True
-    ):
+    checkpoint_path,
+    task_set=["atomic_seen", "composite_seen", "composite_unseen"],
+    verbose=True,
+):
     stats = dict(
         pretrain=dict(),
         target=dict(),
@@ -59,9 +65,9 @@ def compute_stats(
             stats_path = os.path.join(task_dir, "stats.json")
             if not os.path.exists(stats_path):
                 continue
-            with open(stats_path, 'r') as f:
+            with open(stats_path, "r") as f:
                 this_data = json.load(f)
-            
+
             sr_key = "success_rate"
             if sr_key in this_data:
                 stats[split][task_name] = this_data[sr_key]
@@ -69,7 +75,7 @@ def compute_stats(
     all_group_stats = dict()
     for group_name in task_set:
         task_names = TASK_GROUP_MAPPING[group_name]
-        group_stats=dict(
+        group_stats = dict(
             task_stats=dict(),
         )
         for task in task_names:
@@ -80,10 +86,11 @@ def compute_stats(
                     val *= 100.0
                 group_stats["task_stats"][task][split] = val
 
-        
         for split in ["pretrain", "target"]:
             split_vals = [group_stats["task_stats"][task][split] for task in task_names]
-            group_stats[f"avg_{split}"] = np.mean([val for val in split_vals if val is not None])
+            group_stats[f"avg_{split}"] = np.mean(
+                [val for val in split_vals if val is not None]
+            )
 
         all_group_stats[group_name] = group_stats
 
@@ -121,11 +128,7 @@ if __name__ == "__main__":
         "--task_set",
         type=str,
         nargs="+",
-        default=[
-            "atomic_seen",
-            "composite_seen",
-            "composite_unseen"
-        ],
+        default=["atomic_seen", "composite_seen", "composite_unseen"],
     )
     args = parser.parse_args()
     compute_stats(args.dir, task_set=args.task_set)

@@ -49,16 +49,22 @@ def action_head_pytorch_forward(self, backbone_output, action_input):
         t_discretized = int(t_cont * self.num_timestep_buckets)
 
         # Embed noised action trajectory.
-        timesteps_tensor = torch.full(size=(batch_size,), fill_value=t_discretized, device=device)
+        timesteps_tensor = torch.full(
+            size=(batch_size,), fill_value=t_discretized, device=device
+        )
         action_features = self.action_encoder(actions, timesteps_tensor, embodiment_id)
         # Maybe add position embedding.
         if self.config.add_pos_embed:
-            pos_ids = torch.arange(action_features.shape[1], dtype=torch.long, device=device)
+            pos_ids = torch.arange(
+                action_features.shape[1], dtype=torch.long, device=device
+            )
             pos_embs = self.position_embedding(pos_ids).unsqueeze(0)
             action_features = action_features + pos_embs
 
         # Join vision, language, state and action embedding along sequence dimension.
-        future_tokens = self.future_tokens.weight.unsqueeze(0).expand(vl_embs.shape[0], -1, -1)
+        future_tokens = self.future_tokens.weight.unsqueeze(0).expand(
+            vl_embs.shape[0], -1, -1
+        )
         sa_embs = torch.cat((state_features, future_tokens, action_features), dim=1)
 
         # Run model forward.

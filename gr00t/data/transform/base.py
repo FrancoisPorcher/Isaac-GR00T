@@ -36,9 +36,9 @@ class ModalityTransform(BaseModel, ABC):
 
     @property
     def dataset_metadata(self) -> DatasetMetadata:
-        assert (
-            self._dataset_metadata is not None
-        ), "Dataset metadata is not set. Please call set_metadata() before calling apply()."
+        assert self._dataset_metadata is not None, (
+            "Dataset metadata is not set. Please call set_metadata() before calling apply()."
+        )
         return self._dataset_metadata
 
     @dataset_metadata.setter
@@ -93,7 +93,9 @@ class InvertibleModalityTransform(ModalityTransform):
 class ComposedModalityTransform(ModalityTransform):
     """Compose multiple modality transforms."""
 
-    transforms: list[ModalityTransform] = Field(..., description="The transforms to compose.")
+    transforms: list[ModalityTransform] = Field(
+        ..., description="The transforms to compose."
+    )
     apply_to: list[str] = Field(
         default_factory=list, description="Will be ignored for composed transforms."
     )
@@ -122,7 +124,9 @@ class ComposedModalityTransform(ModalityTransform):
                     data = transform.unapply(data)
                 except Exception as e:
                     step = len(self.transforms) - i - 1
-                    raise ValueError(f"Error unapplying transform {step} to data: {e}") from e
+                    raise ValueError(
+                        f"Error unapplying transform {step} to data: {e}"
+                    ) from e
         return data
 
     def train(self):

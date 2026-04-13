@@ -63,7 +63,9 @@ class FlashAttention(nn.Module):
                            (default: 0.0)
     """
 
-    def __init__(self, softmax_scale=None, attention_dropout=0.0, device=None, dtype=None):
+    def __init__(
+        self, softmax_scale=None, attention_dropout=0.0, device=None, dtype=None
+    ):
         super().__init__()
         self.softmax_scale = softmax_scale
         self.dropout_p = attention_dropout
@@ -94,7 +96,11 @@ class FlashAttention(nn.Module):
                 qkv = rearrange(qkv, "b s ... -> (b s) ...")
                 max_s = seqlen
                 cu_seqlens = torch.arange(
-                    0, (batch_size + 1) * seqlen, step=seqlen, dtype=torch.int32, device=qkv.device
+                    0,
+                    (batch_size + 1) * seqlen,
+                    step=seqlen,
+                    dtype=torch.int32,
+                    device=qkv.device,
                 )
                 output = flash_attn_unpadded_qkvpacked_func(
                     qkv,
@@ -109,7 +115,9 @@ class FlashAttention(nn.Module):
                 nheads = qkv.shape[-2]
                 x = rearrange(qkv, "b s three h d -> b s (three h d)")
                 x_unpad, indices, cu_seqlens, max_s = unpad_input(x, key_padding_mask)
-                x_unpad = rearrange(x_unpad, "nnz (three h d) -> nnz three h d", three=3, h=nheads)
+                x_unpad = rearrange(
+                    x_unpad, "nnz (three h d) -> nnz three h d", three=3, h=nheads
+                )
                 output_unpad = flash_attn_unpadded_qkvpacked_func(
                     x_unpad,
                     cu_seqlens,
@@ -120,7 +128,10 @@ class FlashAttention(nn.Module):
                 )
                 output = rearrange(
                     pad_input(
-                        rearrange(output_unpad, "nnz h d -> nnz (h d)"), indices, batch_size, seqlen
+                        rearrange(output_unpad, "nnz h d -> nnz (h d)"),
+                        indices,
+                        batch_size,
+                        seqlen,
                     ),
                     "b s (h d) -> b s h d",
                     h=nheads,
@@ -151,7 +162,9 @@ def _flash_attn(self, x: torch.Tensor) -> torch.Tensor:
 
     qkv = rearrange(qkv, "b t s h d -> b s t h d")
 
-    context, _ = self.inner_attn(qkv, key_padding_mask=None, need_weights=False, causal=False)
+    context, _ = self.inner_attn(
+        qkv, key_padding_mask=None, need_weights=False, causal=False
+    )
 
     x = rearrange(context, "b s h d -> b s (h d)")
     x = self.proj(x)
@@ -160,9 +173,9 @@ def _flash_attn(self, x: torch.Tensor) -> torch.Tensor:
 
 
 def forward(self, x: torch.Tensor) -> torch.Tensor:
-    assert (
-        x.dtype == torch.bfloat16
-    ), "Flash attention is only supported on A100 or H100 GPU during training due to head dim > 64 backward."
+    assert x.dtype == torch.bfloat16, (
+        "Flash attention is only supported on A100 or H100 GPU during training due to head dim > 64 backward."
+    )
     result = self._flash_attn(x)
     return result
 
@@ -213,10 +226,14 @@ class ClsToken(nn.Module):
             if num_registers:
                 self.num_registers = num_registers
             elif register_multiple:
-                self.num_registers = register_multiple - (num_tokens % register_multiple)
+                self.num_registers = register_multiple - (
+                    num_tokens % register_multiple
+                )
 
             scale = ndim**-0.5
-            self.token = nn.Parameter(torch.randn(num_tokens + self.num_registers, ndim) * scale)
+            self.token = nn.Parameter(
+                torch.randn(num_tokens + self.num_registers, ndim) * scale
+            )
         else:
             self.token = None
 
@@ -276,7 +293,9 @@ class ViTPatchGenerator(nn.Module):
         if isinstance(max_input_dims, int):
             max_input_dims = (max_input_dims, max_input_dims)
 
-        max_input_dims = tuple(int(math.ceil(d / patch_size) * patch_size) for d in max_input_dims)
+        max_input_dims = tuple(
+            int(math.ceil(d / patch_size) * patch_size) for d in max_input_dims
+        )
 
         self.cpe_mode = max_input_dims != input_dims
         self.pos_dropout = pos_dropout
@@ -295,7 +314,9 @@ class ViTPatchGenerator(nn.Module):
         self.max_input_dims = max_input_dims
 
         self.im_to_patches = Im2Patches(patch_size)
-        self.embedder = ViTPatchLinear(patch_size, embed_dim, bias=patch_bias, **factory)
+        self.embedder = ViTPatchLinear(
+            patch_size, embed_dim, bias=patch_bias, **factory
+        )
 
         if abs_pos:
             scale = embed_dim**-0.5
@@ -311,7 +332,9 @@ class ViTPatchGenerator(nn.Module):
             num_registers=num_registers,
         )
 
-        self.patch_normalizer = nn.LayerNorm(embed_dim) if normalize_patches else nn.Identity()
+        self.patch_normalizer = (
+            nn.LayerNorm(embed_dim) if normalize_patches else nn.Identity()
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         patches = self.embed_patches(x)
@@ -343,16 +366,22 @@ class ViTPatchGenerator(nn.Module):
             "pos_embed",
         ]
 
-    def _load_projection(self, src_proj_weight: torch.Tensor, targ_proj_weight: torch.Tensor):
+    def _load_projection(
+        self, src_proj_weight: torch.Tensor, targ_proj_weight: torch.Tensor
+    ):
         if src_proj_weight.shape != targ_proj_weight.shape:
             src_patch_size = int(math.sqrt(src_proj_weight.shape[1] // 3))
 
-            assert (src_patch_size**2) * 3 == src_proj_weight.shape[
-                1
-            ], "Unable to interpolate non-square patch size"
+            assert (src_patch_size**2) * 3 == src_proj_weight.shape[1], (
+                "Unable to interpolate non-square patch size"
+            )
 
             src_proj_weight = rearrange(
-                src_proj_weight, "b (c h w) -> b c h w", c=3, h=src_patch_size, w=src_patch_size
+                src_proj_weight,
+                "b (c h w) -> b c h w",
+                c=3,
+                h=src_patch_size,
+                w=src_patch_size,
             )
             src_proj_weight = F.interpolate(
                 src_proj_weight,
@@ -382,7 +411,9 @@ class ViTPatchGenerator(nn.Module):
 
         if self.training and self.pos_dropout > 0:
             keeps = (
-                torch.rand(patches.shape[0], 1, 1, dtype=pos_enc.dtype, device=pos_enc.device)
+                torch.rand(
+                    patches.shape[0], 1, 1, dtype=pos_enc.dtype, device=pos_enc.device
+                )
                 > self.pos_dropout
             )
             pos_enc_drop = torch.where(keeps, pos_enc, 0)
@@ -418,7 +449,9 @@ class ViTPatchGenerator(nn.Module):
         if (self.num_rows, self.num_cols) == input_dims:
             return self.pos_embed
 
-        pos_embed = self.pos_embed.reshape(1, self.num_rows, self.num_cols, -1).permute(0, 3, 1, 2)
+        pos_embed = self.pos_embed.reshape(1, self.num_rows, self.num_cols, -1).permute(
+            0, 3, 1, 2
+        )
 
         def window_select(pos_embed):
             if input_dims[0] < pos_embed.shape[-2]:
@@ -431,7 +464,8 @@ class ViTPatchGenerator(nn.Module):
             if self.training:
                 min_scale = math.sqrt(0.1)
                 scale = (
-                    torch.rand(batch_size, 1, 1, device=pos_embed.device) * (1 - min_scale)
+                    torch.rand(batch_size, 1, 1, device=pos_embed.device)
+                    * (1 - min_scale)
                     + min_scale
                 )
                 aspect_min = math.log(3 / 4)
@@ -446,14 +480,16 @@ class ViTPatchGenerator(nn.Module):
                 scale_y = scale * (1 / aspect)
                 scale_xy = torch.stack([scale_x, scale_y], dim=-1).clamp_(0, 1)
 
-                pos_xy = torch.rand(batch_size, 1, 1, 2, device=pos_embed.device) * (1 - scale_xy)
+                pos_xy = torch.rand(batch_size, 1, 1, 2, device=pos_embed.device) * (
+                    1 - scale_xy
+                )
 
-                lin_x = torch.linspace(0, 1, steps=input_dims[1], device=pos_embed.device)[
-                    None, None
-                ].expand(batch_size, input_dims[0], -1)
-                lin_y = torch.linspace(0, 1, steps=input_dims[0], device=pos_embed.device)[
-                    None, :, None
-                ].expand(batch_size, -1, input_dims[1])
+                lin_x = torch.linspace(
+                    0, 1, steps=input_dims[1], device=pos_embed.device
+                )[None, None].expand(batch_size, input_dims[0], -1)
+                lin_y = torch.linspace(
+                    0, 1, steps=input_dims[0], device=pos_embed.device
+                )[None, :, None].expand(batch_size, -1, input_dims[1])
 
                 lin_xy = torch.stack([lin_x, lin_y], dim=-1)
 
@@ -479,7 +515,10 @@ class ViTPatchGenerator(nn.Module):
                 # else:
                 max_dim = max(input_dims)
                 pos_embed = F.interpolate(
-                    pos_embed.float(), size=(max_dim, max_dim), align_corners=True, mode="bilinear"
+                    pos_embed.float(),
+                    size=(max_dim, max_dim),
+                    align_corners=True,
+                    mode="bilinear",
                 ).to(pos_embed.dtype)
 
                 pos_embed = window_select(pos_embed)
@@ -620,7 +659,14 @@ class Dinov2LayerScale(nn.Module):
         return x.mul_(self.grandma) if self.inplace else x * self.grandma
 
     def _load_from_state_dict(
-        self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
     ):
         # Huggingface is absurd and it will rename strings that contain `gamma`, which means that the normal DINO implementation
         # of LayerScale won't work with HFHub. So we rename the variable to 'grandma', and support loading checkpoints in either
@@ -633,7 +679,9 @@ class Dinov2LayerScale(nn.Module):
             gamma = state_dict[key_b]
         else:
             if strict:
-                raise KeyError(f"Couldn't find the key {key_a} nor {key_b} in the state dict!")
+                raise KeyError(
+                    f"Couldn't find the key {key_a} nor {key_b} in the state dict!"
+                )
             else:
                 missing_keys.append(key_a)
                 missing_keys.append(key_b)
@@ -670,7 +718,9 @@ def _patch_layer_scale(model: VisionTransformer):
 @register_model
 def vit_huge_patch16_224(pretrained=False, **kwargs) -> VisionTransformer:
     """ViT-Huge model (ViT-H/16) from original paper (https://arxiv.org/abs/2010.11929)."""
-    model_args = dict(patch_size=16, embed_dim=1280, depth=32, num_heads=16, weight_init="skip")
+    model_args = dict(
+        patch_size=16, embed_dim=1280, depth=32, num_heads=16, weight_init="skip"
+    )
     if pretrained:
         # There is no pretrained version of ViT-H/16, but we can adapt a ViT-H/14 for this purpose
         model = _create_vision_transformer(
@@ -884,7 +934,9 @@ class RADIOModel(PreTrainedModel):
     def patch_size(self) -> int:
         return self.radio_model.patch_size
 
-    def forward(self, pixel_values: torch.Tensor, output_hidden_states=False, return_dict=True):
+    def forward(
+        self, pixel_values: torch.Tensor, output_hidden_states=False, return_dict=True
+    ):
         y = self.radio_model.forward(pixel_values.to(self.dtype))
         assert not output_hidden_states
         if return_dict:

@@ -52,7 +52,9 @@ class ArgsConfig:
     plot: bool = False
     """Whether to plot the images."""
 
-    modality_keys: List[str] = field(default_factory=lambda: ["end_effector_position"]) # ["end_effector_position", "end_effector_rotation"]
+    modality_keys: List[str] = field(
+        default_factory=lambda: ["end_effector_position"]
+    )  # ["end_effector_position", "end_effector_rotation"]
     """Modality keys to evaluate."""
 
     data_config: Literal[tuple(DATA_CONFIG_MAP.keys())] = "panda_omron"
@@ -92,7 +94,9 @@ def main(args: ArgsConfig):
     # Set action_horizon from data config if not provided
     if args.action_horizon is None:
         args.action_horizon = len(data_config.action_indices)
-        print(f"Using action_horizon={args.action_horizon} from data config '{args.data_config}'")
+        print(
+            f"Using action_horizon={args.action_horizon} from data config '{args.data_config}'"
+        )
 
     if args.model_path is not None:
         import torch

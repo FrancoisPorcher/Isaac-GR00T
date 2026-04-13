@@ -28,7 +28,11 @@ json_numpy.patch()
 
 class HTTPInferenceServer:
     def __init__(
-        self, policy: Gr00tPolicy, port: int, host: str = "0.0.0.0", api_token: Optional[str] = None
+        self,
+        policy: Gr00tPolicy,
+        port: int,
+        host: str = "0.0.0.0",
+        api_token: Optional[str] = None,
     ):
         """
         A simple HTTP server for GR00T models; exposes `/act` to predict an action for a given observation.
@@ -74,7 +78,9 @@ class HTTPInferenceServer:
                 "{'observation': dict} where observation contains the required modalities.\n"
                 "Example observation keys: video.ego_view, state.left_arm, state.right_arm, etc."
             )
-            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Internal server error: {str(e)}"
+            )
 
     def health_check(self) -> Dict[str, str]:
         """Health check endpoint."""
@@ -90,7 +96,10 @@ class HTTPInferenceServer:
 
 
 def create_http_server(
-    policy: Gr00tPolicy, port: int, host: str = "0.0.0.0", api_token: Optional[str] = None
+    policy: Gr00tPolicy,
+    port: int,
+    host: str = "0.0.0.0",
+    api_token: Optional[str] = None,
 ) -> HTTPInferenceServer:
     """Factory function to create an HTTP inference server."""
     return HTTPInferenceServer(policy, port, host, api_token)

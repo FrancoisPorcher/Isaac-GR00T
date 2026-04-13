@@ -100,7 +100,10 @@ def calc_mse_for_single_trajectory(
                 # NOTE: concat_pred_action = action[f"action.{modality_keys[0]}"][j]
                 # the np.atleast_1d is to ensure the action is a 1D array, handle where single value is returned
                 concat_pred_action = np.concatenate(
-                    [np.atleast_1d(action_chunk[f"action.{key}"][j]) for key in modality_keys],
+                    [
+                        np.atleast_1d(action_chunk[f"action.{key}"][j])
+                        for key in modality_keys
+                    ],
                     axis=0,
                 )
                 pred_action_across_time.append(concat_pred_action)
@@ -164,7 +167,9 @@ def plot_trajectory(
     steps = info["steps"]
 
     # Adjust figure size and spacing to accommodate titles
-    fig, axes = plt.subplots(nrows=action_dim, ncols=1, figsize=(10, 4 * action_dim + 2))
+    fig, axes = plt.subplots(
+        nrows=action_dim, ncols=1, figsize=(10, 4 * action_dim + 2)
+    )
 
     # Leave plenty of space at the top for titles
     plt.subplots_adjust(top=0.92, left=0.1, right=0.96, hspace=0.4)
@@ -192,7 +197,13 @@ def plot_trajectory(
         # put a dot every ACTION_HORIZON
         for j in range(0, steps, action_horizon):
             if j == 0:
-                ax.plot(j, gt_action_across_time[j, i], "ro", label="inference point", markersize=6)
+                ax.plot(
+                    j,
+                    gt_action_across_time[j, i],
+                    "ro",
+                    label="inference point",
+                    markersize=6,
+                )
             else:
                 ax.plot(j, gt_action_across_time[j, i], "ro", markersize=4)
 

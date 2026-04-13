@@ -131,3 +131,9 @@ expdata/
 plots/
 checkpoints/
 gr00t_checkpoints
+
+# Symlinks
+phd/
+
+# Experiments
+gemma4/

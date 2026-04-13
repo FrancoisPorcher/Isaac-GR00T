@@ -133,12 +133,14 @@ class VideoRecorder:
 
         n_repeats = 1
         if self.start_time is not None:
-            local_idxs, global_idxs, self.next_global_idx = get_accumulate_timestamp_idxs(
-                # only one timestamp
-                timestamps=[frame_time],
-                start_time=self.start_time,
-                dt=1 / self.fps,
-                next_global_idx=self.next_global_idx,
+            local_idxs, global_idxs, self.next_global_idx = (
+                get_accumulate_timestamp_idxs(
+                    # only one timestamp
+                    timestamps=[frame_time],
+                    start_time=self.start_time,
+                    dt=1 / self.fps,
+                    next_global_idx=self.next_global_idx,
+                )
             )
             # number of appearance means repeats
             n_repeats = len(local_idxs)
@@ -252,7 +254,9 @@ class VideoRecordingWrapper(gym.Wrapper):
         result = super().step(action)
         obs = result[0]
         self.step_count += 1
-        if self.file_path is not None and ((self.step_count % self.steps_per_render) == 0):
+        if self.file_path is not None and (
+            (self.step_count % self.steps_per_render) == 0
+        ):
             if not self.video_recorder.is_ready():
                 self.video_recorder.start(self.file_path)
 

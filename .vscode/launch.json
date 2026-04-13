@@ -1,0 +1,108 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "meta-python",
+            "request": "launch",
+            "name": "Debug Distributed Eval (1 GPU, 1 task)",
+            "program": "${workspaceFolder}/scripts/run_eval_distributed.py",
+            "args": [
+                "--model_path", "${workspaceFolder}/checkpoints/gr00t_n1-5/multitask_learning/checkpoint-120000",
+                "--tasks", "SetupBowls",
+                "--split", "target",
+                "--n_episodes", "2",
+                "--n_envs", "1",
+                "--port", "5555",
+                "--video_dir", "/tmp/debug_eval",
+                "--run_id", "debug"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "MUJOCO_GL": "egl",
+                "LD_LIBRARY_PATH": "/home/francoisporcher/miniforge3/lib:/usr/lib64:${env:LD_LIBRARY_PATH}"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "type": "meta-python",
+            "request": "launch",
+            "name": "Evaluate GR00T (single process)",
+            "program": "${workspaceFolder}/scripts/run_eval.py",
+            "args": [
+                "--model_path", "${workspaceFolder}/checkpoints/gr00t_n1-5/multitask_learning/checkpoint-120000",
+                "--task_set", "atomic_seen",
+                "--split", "target",
+                "--n_episodes", "2",
+                "--n_envs", "1",
+                "--video_dir", "/tmp/debug_eval"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "MUJOCO_GL": "egl",
+                "LD_LIBRARY_PATH": "/home/francoisporcher/miniforge3/lib:/usr/lib64:${env:LD_LIBRARY_PATH}"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "type": "meta-python",
+            "request": "launch",
+            "name": "Fine-tune GR00T",
+            "program": "${workspaceFolder}/scripts/gr00t_finetune.py",
+            "args": [
+                "--dataset-soup", "target50",
+                "--output-dir", "/checkpoint/unicorns/francoisporcher/gr00t/debug",
+                "--max-steps", "100"
+            ],
+            "env": {
+                "MUJOCO_GL": "egl",
+                "LD_LIBRARY_PATH": "/home/francoisporcher/miniforge3/lib:/usr/lib64:${env:LD_LIBRARY_PATH}"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "type": "meta-python",
+            "request": "launch",
+            "name": "Analyze Eval Results",
+            "program": "${workspaceFolder}/scripts/analyze_eval.py",
+            "args": [
+                "--experiment_dir", "/checkpoint/unicorns/francoisporcher/gr00t/full_eval_4_nodes/2026-04-05_22-10-12"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "type": "meta-python",
+            "request": "launch",
+            "name": "Gemma 4 Failure Analysis",
+            "program": "${workspaceFolder}/gemma4/analyze_failures.py",
+            "args": [
+                "--video_path", "${workspaceFolder}/gemma4/failure_TurnOnMicrowave_Press_the_start_button_on_the_microwave_try_001.mp4",
+                "--output", "${workspaceFolder}/gemma4/analysis_results.json"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "type": "meta-python",
+            "request": "launch",
+            "name": "Gemma 4 Object Detection",
+            "program": "${workspaceFolder}/gemma4/detect_objects.py",
+            "args": [
+                "--video_path", "${workspaceFolder}/gemma4/failure_TurnOnMicrowave_Press_the_start_button_on_the_microwave_try_001.mp4",
+                "--frame_indices", "-1",
+                "--output_dir", "${workspaceFolder}/gemma4/detections"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+    ]
+}

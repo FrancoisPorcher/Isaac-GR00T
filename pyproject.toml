@@ -66,6 +66,8 @@ robocasa365 = [
     "mujoco==3.3.1",
     "robocasa>=1.0",
     "robosuite",
+    "numba==0.61.2",
+    "llvmlite>=0.44,<0.45",
     "run>=0.3; sys_platform == 'linux'",
     "torchcodec>=0.1.0; sys_platform == 'linux'",
     "uv>=0.9.30; sys_platform == 'linux'",

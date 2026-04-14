@@ -119,7 +119,11 @@ def analyze_video(model, processor, video_path: Path, n_frames: int = 16) -> dic
 
     json_match = re.search(r"\{.*\}", raw, re.DOTALL)
     result = json.loads(json_match.group()) if json_match else {"raw_response": raw}
+    try_match = re.search(r"_try_(\d+)$", video_path.stem)
+    try_number = int(try_match.group(1)) if try_match else None
     result["video_path"] = str(video_path)
+    result["try_id"] = f"try_{try_number:03d}" if try_number is not None else None
+    result["try_number"] = try_number
     result["task_description"] = task_description
     result["n_frames"] = len(frames)
     return result

@@ -2,6 +2,56 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug GR00T Finetuning (TurnOnMicrowave)",
+            "type": "meta-python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/gr00t_finetune.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--dataset-soup", "TurnOnMicrowave",
+                "--output-dir", "/checkpoint/unicorns/francoisporcher/gr00t/debug/microwave_finetune",
+                "--base-model-path", "${workspaceFolder}/checkpoints/gr00t_n1-5/multitask_learning/checkpoint-120000",
+                "--data-config", "panda_omron",
+                "--batch-size", "4",
+                "--num-gpus", "1",
+                "--max-steps", "10",
+                "--save-steps", "5"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "MUJOCO_GL": "egl",
+                "LD_LIBRARY_PATH": "/home/francoisporcher/miniforge3/lib:/usr/lib64:${env:LD_LIBRARY_PATH}"
+            }
+        },
+        {
+            "name": "Debug GR00T Finetuning (with torchrun)",
+            "type": "meta-python",
+            "request": "launch",
+            "module": "torch.distributed.run",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--standalone",
+                "--nnodes=1",
+                "--nproc_per_node=1",
+                "${workspaceFolder}/scripts/gr00t_finetune.py",
+                "--dataset-soup", "TurnOnMicrowave",
+                "--output-dir", "/checkpoint/unicorns/francoisporcher/gr00t/debug/microwave_finetune",
+                "--base-model-path", "nvidia/GR00T-N1.5-3B",
+                "--data-config", "panda_omron",
+                "--batch-size", "4",
+                "--num-gpus", "1",
+                "--max-steps", "10",
+                "--save-steps", "5"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "MUJOCO_GL": "egl",
+                "LD_LIBRARY_PATH": "/home/francoisporcher/miniforge3/lib:/usr/lib64:${env:LD_LIBRARY_PATH}"
+            }
+        },
+        {
             "type": "meta-python",
             "request": "launch",
             "name": "Debug Distributed Eval (1 GPU, 1 task)",
@@ -35,7 +85,7 @@
                 "--split", "target",
                 "--n_episodes", "2",
                 "--n_envs", "1",
-                "--video_dir", "/tmp/debug_eval"
+                "--video_dir", "${workspaceFolder}/outputs/debug"
             ],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "0",
@@ -103,6 +153,6 @@
             },
             "console": "integratedTerminal",
             "justMyCode": false
-        },
+        }
     ]
 }

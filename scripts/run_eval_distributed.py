@@ -36,7 +36,9 @@ from gr00t.experiment.data_config import DATA_CONFIG_MAP
 from gr00t.model.policy import Gr00tPolicy
 
 
-def run_server(data_config, model_path, embodiment_tag, port):
+def run_server(
+    data_config, model_path, embodiment_tag, port, server_ready=None, max_retries=10
+):
     data_config = DATA_CONFIG_MAP[data_config]
     modality_config = data_config.modality_config()
     modality_transform = data_config.transform()
@@ -49,8 +51,29 @@ def run_server(data_config, model_path, embodiment_tag, port):
         denoising_steps=4,
     )
 
-    server = RobotInferenceServer(policy, port=port)
-    server.run()
+    for attempt in range(max_retries):
+        try:
+            server = RobotInferenceServer(policy, port=port + attempt)
+            if attempt > 0:
+                print(f"Server bound to fallback port {port + attempt}")
+            if server_ready is not None:
+                server_ready["port"] = port + attempt
+                server_ready["ok"] = True
+            server.run()
+            return
+        except Exception as e:
+            if "Address already in use" in str(e):
+                print(f"Port {port + attempt} in use, trying {port + attempt + 1}...")
+                continue
+            if server_ready is not None:
+                server_ready["error"] = str(e)
+            raise
+    msg = (
+        f"Could not bind server after {max_retries} attempts starting from port {port}"
+    )
+    if server_ready is not None:
+        server_ready["error"] = msg
+    raise RuntimeError(msg)
 
 
 def run_client(
@@ -92,7 +115,7 @@ def run_client(
         )
 
         print(f"Running simulation for {env_name}...")
-        _, episode_successes = simulation_client.run_simulation(config)
+        _, episode_successes, episode_metas = simulation_client.run_simulation(config)
 
         success_rate = np.mean(episode_successes)
 
@@ -107,6 +130,12 @@ def run_client(
             }
             json.dump(stats, f, indent=4)
         print(f"saved stats to {stats_path}")
+
+        meta_path = os.path.join(this_video_dir, "episode_meta.jsonl")
+        with open(meta_path, "w") as f:
+            for meta in episode_metas:
+                f.write(json.dumps(meta) + "\n")
+        print(f"saved episode metadata to {meta_path}")
 
         print()
 
@@ -218,16 +247,27 @@ if __name__ == "__main__":
             run_id=run_id,
         )
     else:
+        server_ready = {"ok": False, "port": args.port}
         server_thread = threading.Thread(
             target=run_server,
             args=(args.data_config, args.model_path, args.embodiment_tag, args.port),
+            kwargs={"server_ready": server_ready},
             daemon=True,
         )
         server_thread.start()
-        time.sleep(1)
+        for _ in range(120):
+            time.sleep(1)
+            if server_ready["ok"]:
+                break
+            if not server_thread.is_alive():
+                err = server_ready.get("error", "unknown error")
+                raise RuntimeError(f"Server thread died: {err}")
+        if not server_ready["ok"]:
+            raise RuntimeError("Server did not become ready within 120 seconds")
+        actual_port = server_ready["port"]
         run_client(
             host=args.host,
-            port=args.port,
+            port=actual_port,
             env_names=env_names,
             video_dir=args.video_dir or args.model_path,
             split=args.split,

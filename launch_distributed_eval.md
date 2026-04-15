@@ -7,6 +7,5 @@ cd /storage/home/francoisporcher/Isaac-GR00T && .venv/bin/python scripts/launch_
   --n_episodes 30 \
   --n_envs 5 \
   --qos h200_unicorns_high \
-  --time_hours 16 \
-  --exclude_nodes h200-085-038
+  --time_hours 16
 ```

@@ -34,6 +34,42 @@ from gr00t.eval.wrappers.video_recording_wrapper import (
 )
 from gr00t.model.policy import BasePolicy
 
+
+def _slim_ep_meta(full_meta: dict) -> dict:
+    """Extract only the fields we need from a full ep_meta dict."""
+    slim_objects = []
+    for cfg in full_meta.get("object_cfgs", []):
+        info = cfg.get("info", {})
+        slim_objects.append(
+            {
+                "name": cfg.get("name"),
+                "cat": info.get("cat"),
+                "mjcf_path": info.get("mjcf_path"),
+                "groups": info.get("groups_containing_sampled_obj", []),
+            }
+        )
+
+    return {
+        "layout_id": full_meta.get("layout_id"),
+        "style_id": full_meta.get("style_id"),
+        "lang": full_meta.get("lang", ""),
+        "init_robot_base_pos": full_meta.get("init_robot_base_pos"),
+        "init_robot_base_ori": full_meta.get("init_robot_base_ori"),
+        "object_cfgs": slim_objects,
+    }
+
+
+def _extract_all_ep_metas(env: gym.vector.VectorEnv, n_envs: int) -> list:
+    """Extract slim episode metadata from all sub-environments in a VectorEnv.
+
+    Uses env.call() which works for both SyncVectorEnv and AsyncVectorEnv.
+    Requires get_ep_meta() to be accessible on the sub-env wrapper chain
+    (added to MultiStepWrapper).
+    """
+    all_full_metas = env.call("get_ep_meta")
+    return [_slim_ep_meta(all_full_metas[i]) for i in range(n_envs)]
+
+
 # from gymnasium.envs.registration import registry
 
 # print("Available environments:")
@@ -125,7 +161,9 @@ class SimulationInferenceClient(BaseInferenceClient, BasePolicy):
                 context="spawn",
             )
 
-    def run_simulation(self, config: SimulationConfig) -> Tuple[str, List[bool]]:
+    def run_simulation(
+        self, config: SimulationConfig
+    ) -> Tuple[str, List[bool], List[dict]]:
         """Run the simulation for the specified number of episodes."""
         start_time = time.time()
         print(
@@ -140,8 +178,11 @@ class SimulationInferenceClient(BaseInferenceClient, BasePolicy):
         completed_episodes = 0
         current_successes = [False] * config.n_envs
         episode_successes = []
+        episode_metas = []
+        current_ep_metas = [None] * config.n_envs
         # Initial environment reset
         obs, _ = self.env.reset()
+        current_ep_metas = _extract_all_ep_metas(self.env, config.n_envs)
         # Main simulation loop
         while completed_episodes < config.n_episodes:
             # Process observations and get actions from the server
@@ -159,6 +200,11 @@ class SimulationInferenceClient(BaseInferenceClient, BasePolicy):
                 if terminations[env_idx] or truncations[env_idx]:
                     episode_lengths.append(current_lengths[env_idx])
                     episode_successes.append(current_successes[env_idx])
+                    meta = current_ep_metas[env_idx]
+                    meta["episode_idx"] = len(episode_successes) - 1
+                    meta["success"] = current_successes[env_idx]
+                    meta["episode_length"] = current_lengths[env_idx]
+                    episode_metas.append(meta)
                     cumulative_sr = float(np.mean(episode_successes))
                     print(
                         f"EP {len(episode_successes)} success: {current_successes[env_idx]}; Cumulative success rate: {cumulative_sr}"
@@ -168,6 +214,10 @@ class SimulationInferenceClient(BaseInferenceClient, BasePolicy):
                     # Reset trackers for this environment
                     current_rewards[env_idx] = 0
                     current_lengths[env_idx] = 0
+                    # Capture metadata for the new episode after auto-reset
+                    if completed_episodes < config.n_episodes:
+                        new_metas = _extract_all_ep_metas(self.env, config.n_envs)
+                        current_ep_metas[env_idx] = new_metas[env_idx]
             obs = next_obs
         # Clean up
         self.env.reset()
@@ -179,7 +229,7 @@ class SimulationInferenceClient(BaseInferenceClient, BasePolicy):
         assert len(episode_successes) >= config.n_episodes, (
             f"Expected at least {config.n_episodes} episodes, got {len(episode_successes)}"
         )
-        return config.env_name, episode_successes
+        return config.env_name, episode_successes, episode_metas
 
     def _get_actions_from_server(self, observations: Dict[str, Any]) -> Dict[str, Any]:
         """Process observations and get actions from the inference server."""
@@ -238,7 +288,7 @@ def run_evaluation(
     n_envs: int = 1,
     n_action_steps: int = 2,
     max_episode_steps: int = 100,
-) -> Tuple[str, List[bool]]:
+) -> Tuple[str, List[bool], List[dict]]:
     """
     Simple entry point to run a simulation evaluation.
     Args:

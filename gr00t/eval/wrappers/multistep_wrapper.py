@@ -128,6 +128,10 @@ class MultiStepWrapper(gym.Wrapper):
         self.done = list()
         self.info = defaultdict(lambda: deque(maxlen=self.max_steps_needed + 1))
 
+    def get_ep_meta(self) -> dict:
+        """Delegate to the unwrapped RoboCasaGymEnv's inner robosuite env."""
+        return self.unwrapped.env.get_ep_meta()
+
     def convert_observation_space(
         self, observation_space, video_horizon, state_horizon
     ):

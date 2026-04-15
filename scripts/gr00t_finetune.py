@@ -57,7 +57,10 @@ class ArgsConfig:
 
     # Dataset parameters
     dataset_soup: str = None
-    """Path to the dataset directory or directories"""
+    """Name of a dataset soup from DATASET_SOUP_REGISTRY. Mutually exclusive with dataset_path."""
+
+    dataset_path: str = None
+    """Direct path to a single LeRobot dataset directory. Mutually exclusive with dataset_soup."""
 
     output_dir: str = "/tmp/gr00t"
     """Directory to save model checkpoints."""
@@ -109,6 +112,12 @@ class ArgsConfig:
     )
     """Ratio of total training steps used for warmup."""
 
+    wandb_project: str = "gr00t-finetuning"
+    """Wandb project name."""
+
+    wandb_run_name: str | None = None
+    """Wandb run name. If None, auto-generated from config."""
+
     lora_rank: int = 0
     """Rank for the LORA model. If 0, no LORA will be used."""
 
@@ -145,6 +154,28 @@ class ArgsConfig:
     ds_weights_alpha: float = 0.4
     """weighting for datasets"""
 
+    # Simulation eval callback parameters
+    eval_tasks: list[str] | None = None
+    """Tasks to evaluate during training. If set, enables async eval via sbatch."""
+
+    eval_every_n_saves: int = 1
+    """Run eval every N checkpoint saves."""
+
+    eval_n_episodes: int = 10
+    """Number of episodes per task during eval."""
+
+    eval_n_envs: int = 5
+    """Number of parallel environments for eval."""
+
+    eval_qos: str = "h200_dev"
+    """SLURM QoS for eval jobs."""
+
+    eval_gpus_per_node: int = 8
+    """Number of GPUs per node for distributed eval."""
+
+    eval_time_hours: int = 4
+    """Time limit in hours for eval jobs."""
+
 
 #####################################################################################
 # main training function
@@ -161,9 +192,18 @@ def main(config: ArgsConfig):
     modality_configs = data_config_cls.modality_config()
     transforms = data_config_cls.transform()
 
-    dataset_soup = config.dataset_soup
-    assert dataset_soup in DATASET_SOUP_REGISTRY
-    ds_soup_list = copy.deepcopy(DATASET_SOUP_REGISTRY[dataset_soup])
+    if config.dataset_path and config.dataset_soup:
+        raise ValueError("--dataset-path and --dataset-soup are mutually exclusive.")
+    if not config.dataset_path and not config.dataset_soup:
+        raise ValueError(
+            "Exactly one of --dataset-path or --dataset-soup must be provided."
+        )
+
+    if config.dataset_path:
+        ds_soup_list = [{"path": config.dataset_path, "filter_key": None}]
+    else:
+        assert config.dataset_soup in DATASET_SOUP_REGISTRY
+        ds_soup_list = copy.deepcopy(DATASET_SOUP_REGISTRY[config.dataset_soup])
     print(ds_soup_list)
 
     # 1.2 data loader: we will use either single dataset or mixture dataset
@@ -207,8 +247,7 @@ def main(config: ArgsConfig):
 
         train_dataset = LeRobotMixtureDataset(
             data_mixture=[
-                (dataset, ds_w)  # we will use equal weights for all datasets
-                for dataset, ds_w in zip(single_datasets, ds_weights)
+                (dataset, ds_w) for dataset, ds_w in zip(single_datasets, ds_weights)
             ],
             mode="train",
             balance_dataset_weights=config.balance_dataset_weights,
@@ -282,10 +321,16 @@ def main(config: ArgsConfig):
             action_head_only=not config.lora_full_model,
         )
 
-    # 2.1 modify training args
+    # 2.1 set wandb project before TrainingArguments initializes it
+    if config.report_to == "wandb":
+        os.environ.setdefault("WANDB_PROJECT", config.wandb_project)
+
+    run_name = config.wandb_run_name or Path(config.output_dir).name
+
+    # 2.2 modify training args
     training_args = TrainingArguments(
         output_dir=config.output_dir,
-        run_name=None,
+        run_name=run_name,
         remove_unused_columns=False,
         deepspeed="",
         gradient_checkpointing=False,
@@ -327,7 +372,24 @@ def main(config: ArgsConfig):
         resume_from_checkpoint=config.resume,
     )
 
-    # 2.3 run experiment
+    # 2.3 register eval callback if eval tasks specified
+    if config.eval_tasks:
+        from gr00t.utils.experiment import SimulationEvalCallback
+
+        eval_callback = SimulationEvalCallback(
+            tasks=config.eval_tasks,
+            eval_every_n_saves=config.eval_every_n_saves,
+            n_episodes=config.eval_n_episodes,
+            n_envs=config.eval_n_envs,
+            data_config=config.data_config,
+            embodiment_tag=config.embodiment_tag,
+            eval_qos=config.eval_qos,
+            gpus_per_node=config.eval_gpus_per_node,
+            time_hours=config.eval_time_hours,
+        )
+        experiment.trainer.add_callback(eval_callback)
+
+    # 2.4 run experiment
     experiment.train()
 
 
@@ -369,7 +431,9 @@ if __name__ == "__main__":
 
             # Use subprocess.run instead of os.system
             cmd = [
-                "torchrun",
+                sys.executable,
+                "-m",
+                "torch.distributed.run",
                 "--standalone",
                 f"--nproc_per_node={config.num_gpus}",
                 "--nnodes=1",  # default to 1 node for now

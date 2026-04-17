@@ -185,7 +185,7 @@ def main():
     parser.add_argument("--video_dir", type=str, required=True)
     parser.add_argument("--qos", type=str, default="h200_unicorns_high")
     parser.add_argument("--time_hours", type=int, default=13)
-    parser.add_argument("--cpus_per_gpu", type=int, default=20)
+    parser.add_argument("--cpus_per_gpu", type=int, default=24)
     parser.add_argument("--embodiment_tag", type=str, default="new_embodiment")
     parser.add_argument("--data_config", type=str, default="panda_omron")
     parser.add_argument(

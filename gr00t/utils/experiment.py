@@ -265,7 +265,7 @@ class SimulationEvalCallback(TrainerCallback):
             slurm_qos=self.eval_qos,
             slurm_account="unicorns",
             slurm_gres=f"gpu:{self.gpus_per_node}",
-            slurm_cpus_per_task=self.gpus_per_node * 20,
+            slurm_cpus_per_task=192,
             slurm_mem="256G",
             timeout_min=self.time_hours * 60,
             slurm_job_name=f"eval-step-{step}",
